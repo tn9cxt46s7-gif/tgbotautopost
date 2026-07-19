@@ -1,7 +1,7 @@
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command
-from bot.keyboards import admin_menu
+from keyboards import admin_menu
 
 router = Router()
 
