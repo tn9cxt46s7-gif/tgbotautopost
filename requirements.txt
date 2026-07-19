@@ -1,7 +1,7 @@
+fastapi
+uvicorn[standard]
 aiogram==3.13.0
-apscheduler==3.10.4
-aiosqlite==0.20.0
-python-dotenv==1.0.1
-magic-filter==1.0.12
-aiofiles==23.2.1
-pydantic==2.8.2
+python-dotenv
+magic-filter
+aiofiles
+pydantic
