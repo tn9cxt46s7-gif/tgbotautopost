@@ -1,7 +1,7 @@
 from aiogram import Router, F
 from aiogram.types import Message
 from aiogram.filters import Command
-from bot.keyboards import main_menu
+from keyboards import main_men
 
 router = Router()
 
