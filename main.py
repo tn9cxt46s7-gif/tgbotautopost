@@ -8,6 +8,8 @@ import os
 
 from handlers.user import router as user_router
 from handlers.admin import router as admin_router
+from handlers.payments import router as payments_router
+from database import init_db
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
@@ -17,9 +19,11 @@ dp = Dispatcher()
 
 dp.include_router(user_router)
 dp.include_router(admin_router)
+dp.include_router(payments_router)
 
 
 async def main():
+    await init_db()
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
