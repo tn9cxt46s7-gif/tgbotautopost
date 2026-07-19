@@ -5,23 +5,24 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from dotenv import load_dotenv
 import os
-from fastapi import FastAPI
-import uvicorn
+
+from handlers.user import router as user_router
+from handlers.admin import router as admin_router
 
 load_dotenv()
+logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token=os.getenv("BOT_TOKEN"), default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
 
-# Здесь подключай routers как раньше
+dp.include_router(user_router)
+dp.include_router(admin_router)
 
-app = FastAPI()
 
-@app.post("/webhook")
-async def webhook(request: dict):
-    update = types.Update(**request)
-    await dp.feed_update(bot, update)
-    return {"status": "ok"}
+async def main():
+    await bot.delete_webhook(drop_pending_updates=True)
+    await dp.start_polling(bot)
+
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    asyncio.run(main())
