@@ -5,11 +5,33 @@ load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 
-# On Vercel filesystem is read-only except /tmp
-if os.getenv("VERCEL") and not os.getenv("DB_URL"):
+
+def _normalize_db_url(url: str) -> str:
+    """Make common Postgres URLs work with async SQLAlchemy."""
+    if not url:
+        return url
+    if url.startswith("postgres://"):
+        url = "postgresql+asyncpg://" + url[len("postgres://"):]
+    elif url.startswith("postgresql://") and "+asyncpg" not in url:
+        url = "postgresql+asyncpg://" + url[len("postgresql://"):]
+    return url
+
+
+# Prefer explicit DB_URL, then Vercel/Neon/Supabase style vars
+_raw_db = (
+    os.getenv("DB_URL")
+    or os.getenv("POSTGRES_URL")
+    or os.getenv("POSTGRES_PRISMA_URL")
+    or os.getenv("DATABASE_URL")
+    or ""
+)
+
+if _raw_db:
+    DB_URL = _normalize_db_url(_raw_db)
+elif os.getenv("VERCEL"):
     DB_URL = "sqlite+aiosqlite:////tmp/bot.db"
 else:
-    DB_URL = os.getenv("DB_URL", "sqlite+aiosqlite:///bot.db")
+    DB_URL = "sqlite+aiosqlite:///bot.db"
 
 # Comma-separated Telegram IDs, e.g. "8414329140,123456789"
 _raw_admins = os.getenv("ADMIN_IDS", "8414329140")
