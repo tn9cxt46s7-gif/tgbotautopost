@@ -1,27 +1,112 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy import select, func, or_, desc
+from sqlalchemy import select, func, or_, desc, text
 from datetime import datetime, timedelta
-import os
+import logging
 from dotenv import load_dotenv
 
 from config import DB_URL, DEFAULT_INTERVAL_MINUTES, DEFAULT_JITTER_SECONDS
 
 load_dotenv()
 
+logger = logging.getLogger(__name__)
+
 _connect_args = {"statement_cache_size": 0} if "+asyncpg" in DB_URL else {}
 engine = create_async_engine(DB_URL, connect_args=_connect_args)
 AsyncSession = async_sessionmaker(engine, expire_on_commit=False)
+
+_IS_PG = "+asyncpg" in DB_URL or "postgresql" in DB_URL
 
 
 class Base(DeclarativeBase):
     pass
 
 
+# Missing columns on older DBs (create_all does NOT alter existing tables)
+_MIGRATIONS = [
+    # users
+    ("users", "is_blocked", "BOOLEAN DEFAULT FALSE"),
+    ("users", "is_admin", "BOOLEAN DEFAULT FALSE"),
+    ("users", "autopost_enabled", "BOOLEAN DEFAULT TRUE"),
+    ("users", "default_interval", "INTEGER DEFAULT 60"),
+    ("users", "quiet_hours_start", "INTEGER DEFAULT 0"),
+    ("users", "quiet_hours_end", "INTEGER DEFAULT 6"),
+    # ads
+    ("ads", "title", "VARCHAR"),
+    ("ads", "price", "VARCHAR"),
+    ("ads", "photo_file_id", "VARCHAR"),
+    ("ads", "status", "VARCHAR DEFAULT 'draft'"),
+    ("ads", "last_posted_at", "TIMESTAMP"),
+    ("ads", "variant_seed", "INTEGER DEFAULT 0"),
+    ("ads", "created_at", "TIMESTAMP"),
+    # target_groups
+    ("target_groups", "title", "VARCHAR"),
+    ("target_groups", "min_interval_minutes", "INTEGER DEFAULT 60"),
+    ("target_groups", "jitter_seconds", "INTEGER DEFAULT 180"),
+    ("target_groups", "quiet_hours_start", "INTEGER DEFAULT 0"),
+    ("target_groups", "quiet_hours_end", "INTEGER DEFAULT 6"),
+    ("target_groups", "fail_count", "INTEGER DEFAULT 0"),
+    ("target_groups", "cooldown_until", "TIMESTAMP"),
+    ("target_groups", "last_post_at", "TIMESTAMP"),
+    ("target_groups", "active", "BOOLEAN DEFAULT TRUE"),
+    ("target_groups", "created_at", "TIMESTAMP"),
+]
+
+
+async def _add_column_if_missing(conn, table: str, column: str, coltype: str):
+    if _IS_PG:
+        await conn.execute(text(
+            f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {coltype}"
+        ))
+    else:
+        # SQLite: check pragma, then ADD COLUMN
+        result = await conn.execute(text(f"PRAGMA table_info({table})"))
+        rows = result.fetchall()
+        existing = {r[1] for r in rows}  # name is index 1
+        if column not in existing:
+            await conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}"))
+
+
+async def migrate_schema(conn):
+    """Add new columns to existing tables. Safe to run repeatedly."""
+    for table, column, coltype in _MIGRATIONS:
+        try:
+            await _add_column_if_missing(conn, table, column, coltype)
+        except Exception as e:
+            # table may not exist yet — create_all handles that
+            logger.debug("migrate skip %s.%s: %s", table, column, e)
+
+    # If old ads used `active` boolean, sync into status once
+    try:
+        if _IS_PG:
+            await conn.execute(text(
+                "UPDATE ads SET status = 'active' WHERE status IS NULL OR status = ''"
+            ))
+            # copy from legacy active column if present
+            await conn.execute(text(
+                """
+                DO $$
+                BEGIN
+                  IF EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name='ads' AND column_name='active'
+                  ) THEN
+                    UPDATE ads SET status = CASE WHEN active THEN 'active' ELSE 'paused' END
+                    WHERE status IS NULL OR status = 'draft';
+                  END IF;
+                END $$;
+                """
+            ))
+    except Exception as e:
+        logger.debug("ads status sync: %s", e)
+
+
 async def init_db():
     from models import User, Ad, TargetGroup, Payment, PostLog, SupportTicket  # noqa: F401
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await migrate_schema(conn)
+
 
 
 # ── Users ──────────────────────────────────────────────────────────────────
