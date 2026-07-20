@@ -5,7 +5,7 @@ from keyboards import admin_menu
 
 router = Router()
 
-ADMIN_ID = 123456789  # Замени на свой ID
+ADMIN_ID = 8414329140  # Замени на свой ID
 
 @router.message(Command("admin"))
 async def admin_panel(message: Message):
