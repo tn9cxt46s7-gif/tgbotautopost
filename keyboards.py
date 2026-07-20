@@ -92,7 +92,7 @@ def account_kb(linked: bool) -> InlineKeyboardMarkup:
     else:
         rows = [
             [InlineKeyboardButton(
-                text="Полный автопост (QR)",
+                text="Подключить через QR",
                 callback_data="account_link",
                 icon_custom_emoji_id=eid("LINK"),
             )],
@@ -219,16 +219,17 @@ def group_card_kb(group) -> InlineKeyboardMarkup:
 
 def autopost_kb(enabled: bool) -> InlineKeyboardMarkup:
     if enabled:
-        btn = InlineKeyboardButton(text="Остановить автопостинг", callback_data="ap_stop", icon_custom_emoji_id=eid("PAUSE"))
+        btn = InlineKeyboardButton(text="Остановить", callback_data="ap_stop", icon_custom_emoji_id=eid("PAUSE"))
     else:
-        btn = InlineKeyboardButton(text="Запустить автопостинг", callback_data="ap_start", icon_custom_emoji_id=eid("PLAY"))
+        btn = InlineKeyboardButton(text="Запустить", callback_data="ap_start", icon_custom_emoji_id=eid("PLAY"))
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(
-            text="Запостить сейчас",
+            text="Запостить сейчас в группы",
             callback_data="ap_now",
             icon_custom_emoji_id=eid("FIRE"),
         )],
         [btn],
+        [InlineKeyboardButton(text="Мой аккаунт (QR)", callback_data="account_menu", icon_custom_emoji_id=eid("USER"))],
         [InlineKeyboardButton(text="Мои объявления", callback_data="ads_list", icon_custom_emoji_id=eid("ADS"))],
         [InlineKeyboardButton(text="Мои группы", callback_data="groups_list", icon_custom_emoji_id=eid("GROUPS"))],
     ])

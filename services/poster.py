@@ -1,4 +1,4 @@
-"""Anti-ban poster: user-account auto OR assist (DM ready post to forward)."""
+"""Poster: publish ads from the client's Telegram account (Telethon)."""
 
 from __future__ import annotations
 
@@ -90,11 +90,10 @@ def due_for_group(group, ad, now: datetime, force: bool = False) -> bool:
 
     if last and now - last < earliest:
         return False
-
     return True
 
 
-def _can_post_as_user(user) -> bool:
+def can_autopost(user) -> bool:
     return bool(user_has_tg_account(user) and api_configured())
 
 
@@ -119,67 +118,15 @@ async def _download_photo(bot: Bot, file_id: str) -> bytes | None:
         return None
 
 
-async def _mark_ok(ad, group, user, now: datetime, seed: int, how: str):
-    await update_ad(ad.id, last_posted_at=now, variant_seed=seed)
-    await update_group(
-        group.id,
-        last_post_at=now,
-        fail_count=0,
-        cooldown_until=None,
-    )
-    await add_post_log(ad.id, group.id, user.id, "ok", how)
-
-
-async def _assist_forward(bot: Bot, ad, group, user, text: str) -> None:
-    title = group.title or str(group.chat_id)
-    header = (
-        f"📣 Пора в <b>{title}</b>\n\n"
-        "Ниже готовый пост — <b>перешли его в группу</b> "
-        "(зажми сообщение → Переслать)."
-    )
-    await bot.send_message(user.telegram_id, header)
-    if ad.photo_file_id:
-        await bot.send_photo(user.telegram_id, ad.photo_file_id, caption=text)
-    else:
-        await bot.send_message(user.telegram_id, text)
-
-
-async def _assist_batch(bot: Bot, ad, groups: list, user, text: str, seed: int) -> int:
-    """One ready post in DM for many groups (fast, Vercel-safe)."""
-    now = datetime.utcnow()
-    names = ", ".join((g.title or str(g.chat_id)) for g in groups)
-    header = (
-        f"📣 Готовый пост для: <b>{names}</b>\n\n"
-        "Перешли сообщение ниже в каждую барахолку "
-        "(зажми → Переслать)."
-    )
-    await bot.send_message(user.telegram_id, header)
-    if ad.photo_file_id:
-        await bot.send_photo(user.telegram_id, ad.photo_file_id, caption=text)
-    else:
-        await bot.send_message(user.telegram_id, text)
-
-    for group in groups:
-        await _mark_ok(ad, group, user, now, seed, "assist_batch")
-    return len(groups)
-
-
 async def post_ad_to_group(bot: Bot, ad, group, user) -> bool:
-    """Post via linked account, or assist-mode DM. Always falls back to assist."""
+    """Post one ad to one group from the client's account."""
+    if not can_autopost(user):
+        await add_post_log(ad.id, group.id, user.id, "error", "account_not_linked")
+        return False
+
     now = datetime.utcnow()
     seed = (ad.variant_seed or 0) + 1
     text = build_ad_variants(ad.text, ad.price, seed)
-
-    if not _can_post_as_user(user):
-        try:
-            await _global_throttle()
-            await _assist_forward(bot, ad, group, user, text)
-            await _mark_ok(ad, group, user, now, seed, "assist")
-            return True
-        except Exception as e:
-            await add_post_log(ad.id, group.id, user.id, "error", str(e))
-            logger.exception("Assist post failed ad=%s group=%s", ad.id, group.id)
-            return False
 
     photo_bytes = None
     if ad.photo_file_id:
@@ -188,33 +135,66 @@ async def post_ad_to_group(bot: Bot, ad, group, user) -> bool:
     try:
         await _global_throttle()
         await send_as_user(user, group.chat_id, text, photo_bytes)
-        await _mark_ok(ad, group, user, now, seed, "user_account")
+
+        await update_ad(ad.id, last_posted_at=now, variant_seed=seed)
+        await update_group(
+            group.id,
+            last_post_at=now,
+            fail_count=0,
+            cooldown_until=None,
+        )
+        await add_post_log(ad.id, group.id, user.id, "ok", "user_account")
+        logger.info("Posted ad=%s group=%s", ad.id, group.id)
         return True
 
     except FloodWaitError as e:
         cooldown = datetime.utcnow() + timedelta(seconds=e.seconds + 5)
-        await update_group(group.id, cooldown_until=cooldown, fail_count=(group.fail_count or 0) + 1)
+        fails = (group.fail_count or 0) + 1
+        await update_group(group.id, cooldown_until=cooldown, fail_count=fails)
         await add_post_log(ad.id, group.id, user.id, "error", f"FloodWait {e.seconds}")
         return False
 
-    except Exception as e:
+    except AccountError as e:
         msg = str(e)
-        logger.warning("Account post failed, fallback assist: %s", msg)
-        # Broken / unusable session → drop it so UI shows assist mode
-        if isinstance(e, AccountError) or "session" in msg.lower() or "api" in msg.lower():
+        fails = (group.fail_count or 0) + 1
+        kwargs: dict = {"fail_count": fails}
+        if any(x in msg.lower() for x in ("сессия", "привязан", "недействительн", "недоступн")):
+            await set_user_tg_session(user.telegram_id, None)
             try:
-                await set_user_tg_session(user.telegram_id, None)
-                user.tg_session = None
+                await bot.send_message(
+                    user.telegram_id,
+                    f"⚠️ Сессия аккаунта слетела: {msg}\n"
+                    "Открой «Мой аккаунт» → подключи снова через QR.",
+                )
             except Exception:
                 pass
-        try:
-            await _assist_forward(bot, ad, group, user, text)
-            await _mark_ok(ad, group, user, now, seed, "assist_fallback")
-            return True
-        except Exception as e2:
-            await add_post_log(ad.id, group.id, user.id, "error", f"{msg} | assist: {e2}")
-            logger.exception("Assist fallback failed")
-            return False
+        else:
+            cooldown = datetime.utcnow() + timedelta(minutes=15)
+            kwargs["cooldown_until"] = cooldown
+            if fails >= MAX_GROUP_FAILS:
+                kwargs["active"] = False
+            try:
+                await bot.send_message(
+                    user.telegram_id,
+                    f"⚠️ Не смог запостить в «{group.title or group.chat_id}»: {msg}"
+                    + (" Группа отключена." if fails >= MAX_GROUP_FAILS else ""),
+                )
+            except Exception:
+                pass
+        await update_group(group.id, **kwargs)
+        await add_post_log(ad.id, group.id, user.id, "error", msg)
+        return False
+
+    except Exception as e:
+        fails = (group.fail_count or 0) + 1
+        cooldown = datetime.utcnow() + timedelta(minutes=15)
+        kwargs = {"fail_count": fails, "cooldown_until": cooldown}
+        if fails >= MAX_GROUP_FAILS:
+            kwargs["active"] = False
+        await update_group(group.id, **kwargs)
+        await add_post_log(ad.id, group.id, user.id, "error", str(e))
+        logger.exception("Post error ad=%s group=%s", ad.id, group.id)
+        return False
 
 
 async def run_posting_cycle(bot: Bot):
@@ -233,8 +213,9 @@ async def run_posting_cycle(bot: Bot):
         groups = await get_active_groups_for_user(user_id)
         if not groups:
             continue
-
         for ad, user in items:
+            if not can_autopost(user):
+                continue
             for group in groups:
                 if not due_for_group(group, ad, now):
                     continue
@@ -245,15 +226,15 @@ async def run_posting_cycle(bot: Bot):
 
 
 async def run_posting_for_telegram_user(bot: Bot, telegram_id: int, force: bool = False) -> dict:
-    """
-    Immediate post/assist for one user (works on Vercel webhook).
-    On force + assist: one DM batch per ad (not 4× spam), avoids timeouts.
-    """
     from database import get_user, get_user_ads
 
     user = await get_user(telegram_id)
     if not user:
         return {"ok": 0, "skip": 0, "reason": "no_user", "error": None}
+    if not api_configured():
+        return {"ok": 0, "skip": 0, "reason": "no_api", "error": None}
+    if not user_has_tg_account(user):
+        return {"ok": 0, "skip": 0, "reason": "no_account", "error": None}
     if not user.autopost_enabled and not force:
         return {"ok": 0, "skip": 0, "reason": "autopost_off", "error": None}
 
@@ -264,57 +245,25 @@ async def run_posting_for_telegram_user(bot: Bot, telegram_id: int, force: bool 
     if not groups:
         return {"ok": 0, "skip": 0, "reason": "no_groups", "error": None}
 
-    # Drop dead "linked" state without API — otherwise UI lies and Telethon crashes
-    if user_has_tg_account(user) and not api_configured():
-        await set_user_tg_session(telegram_id, None)
-        user.tg_session = None
-
-    assist = not _can_post_as_user(user)
+    now = datetime.utcnow()
     ok_n = 0
     skip_n = 0
     last_error = None
-    now = datetime.utcnow()
-
-    if force and assist:
-        for ad in ads:
-            seed = (ad.variant_seed or 0) + 1
-            text = build_ad_variants(ad.text, ad.price, seed)
-            try:
-                n = await _assist_batch(bot, ad, groups, user, text, seed)
-                ok_n += n
-            except Exception as e:
-                last_error = str(e)
-                logger.exception("assist_batch failed")
-                skip_n += len(groups)
-        return {
-            "ok": ok_n,
-            "skip": skip_n,
-            "reason": None if ok_n else "send_failed",
-            "assist": True,
-            "error": last_error,
-        }
-
     for ad in ads:
         for group in groups:
             if not due_for_group(group, ad, now, force=force):
                 skip_n += 1
                 continue
-            try:
-                if await post_ad_to_group(bot, ad, group, user):
-                    ok_n += 1
-                else:
-                    skip_n += 1
-                    last_error = "post_failed"
-            except Exception as e:
+            if await post_ad_to_group(bot, ad, group, user):
+                ok_n += 1
+            else:
                 skip_n += 1
-                last_error = str(e)
-                logger.exception("post loop")
-            await asyncio.sleep(0.3)
+                last_error = "post_failed"
+            await asyncio.sleep(random.randint(INTER_GROUP_DELAY_MIN, INTER_GROUP_DELAY_MAX) if ok_n else 2)
 
     return {
         "ok": ok_n,
         "skip": skip_n,
-        "reason": None if ok_n else ("send_failed" if last_error else None),
-        "assist": assist or not _can_post_as_user(user),
+        "reason": None if ok_n else "send_failed",
         "error": last_error,
     }

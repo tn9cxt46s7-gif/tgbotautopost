@@ -33,12 +33,13 @@ async def cmd_start(message: Message, command: CommandObject, state: FSMContext)
         return
 
     await message.answer(
-        f"{tg_emoji('WAVE')} <b>Добро пожаловать в бота автопостинга!</b>\n\n"
-        f"{tg_emoji('AUTO')} Готовые посты по расписанию — без входа в аккаунт\n"
-        f"{tg_emoji('GROUPS')} Группы + объявления + автопостинг\n"
-        f"{tg_emoji('USER')} Опционально: QR для полного автопоста\n"
-        f"{tg_emoji('SUB')} Подписка · {tg_emoji('SUPPORT')} поддержка\n\n"
-        "Добавь группы → объявление → включи автопостинг 👇",
+        f"{tg_emoji('WAVE')} <b>Автопостинг в барахолки</b>\n\n"
+        f"{tg_emoji('USER')} Подключи аккаунт через QR (как Desktop)\n"
+        f"{tg_emoji('GROUPS')} Выбери группы\n"
+        f"{tg_emoji('ADS')} Создай объявление\n"
+        f"{tg_emoji('AUTO')} Включи автопостинг — посты уходят сами\n\n"
+        "Без QR автопост не работает: в барахолки ботов не пускают.\n"
+        "Начни с «Мой аккаунт» 👇",
         reply_markup=main_menu,
     )
 
