@@ -3,7 +3,7 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import CommandStart, CommandObject
 
-from keyboards import main_menu, profile_menu, back_to_menu_kb, EMOJI_1, EMOJI_2, EMOJI_3, EMOJI_4
+from keyboards import main_menu, profile_menu, back_to_menu_kb, e
 from database import get_or_create_user, get_user, count_referrals
 
 # Кастомные эмодзи в HTML-разметке Telegram: <tg-emoji emoji-id="...">fallback</tg-emoji>
@@ -30,10 +30,10 @@ async def cmd_start(message: Message, command: CommandObject):
     )
 
     await message.answer(
-        f"{tg_emoji(EMOJI_1, '👋')} <b>Добро пожаловать в бота автопостинга!</b>\n\n"
-        f"{tg_emoji(EMOJI_2, '🚀')} Автоматическая публикация объявлений в твои группы\n"
-        f"{tg_emoji(EMOJI_3, '💎')} Гибкая система подписки\n"
-        f"{tg_emoji(EMOJI_4, '🔗')} Реферальная программа с бонусами\n\n"
+        f"{tg_emoji(e(30), '👋')} <b>Добро пожаловать в бота автопостинга!</b>\n\n"
+        f"{tg_emoji(e(31), '🚀')} Автоматическая публикация объявлений в твои группы\n"
+        f"{tg_emoji(e(32), '💎')} Гибкая система подписки\n"
+        f"{tg_emoji(e(33), '🔗')} Реферальная программа с бонусами\n\n"
         "Выбирай раздел в меню ниже 👇",
         reply_markup=main_menu
     )
@@ -53,11 +53,11 @@ async def build_profile_text(telegram_id: int, username: str | None) -> str:
     refs = await count_referrals(telegram_id)
 
     return (
-        f"{tg_emoji(EMOJI_1, '👤')} <b>Твой профиль</b>\n\n"
-        f"{tg_emoji(EMOJI_2, '🆔')} ID: <code>{telegram_id}</code>\n"
-        f"{tg_emoji(EMOJI_3, '🔖')} Username: @{username or '—'}\n"
-        f"{tg_emoji(EMOJI_4, '💎')} Подписка: {sub_status}\n"
-        f"{tg_emoji(EMOJI_1, '👥')} Приглашено друзей: <b>{refs}</b>\n"
+        f"{tg_emoji(e(30), '👤')} <b>Твой профиль</b>\n\n"
+        f"{tg_emoji(e(31), '🆔')} ID: <code>{telegram_id}</code>\n"
+        f"{tg_emoji(e(32), '🔖')} Username: @{username or '—'}\n"
+        f"{tg_emoji(e(33), '💎')} Подписка: {sub_status}\n"
+        f"{tg_emoji(e(30), '👥')} Приглашено друзей: <b>{refs}</b>\n"
     )
 
 
@@ -86,10 +86,10 @@ async def referral_menu(callback: CallbackQuery):
     refs = await count_referrals(callback.from_user.id)
 
     text = (
-        f"{tg_emoji(EMOJI_4, '🔗')} <b>Реферальная программа</b>\n\n"
+        f"{tg_emoji(e(33), '🔗')} <b>Реферальная программа</b>\n\n"
         "Приглашай друзей по своей ссылке — и получай "
         "<b>+3 дня подписки</b> за каждого, кто оплатит план.\n\n"
-        f"{tg_emoji(EMOJI_1, '👥')} Уже приглашено: <b>{refs}</b>\n\n"
+        f"{tg_emoji(e(30), '👥')} Уже приглашено: <b>{refs}</b>\n\n"
         f"Твоя ссылка:\n<code>{link}</code>"
     )
     await callback.message.edit_text(text, reply_markup=back_to_menu_kb)
@@ -103,10 +103,10 @@ async def referral_menu_from_reply(message: Message):
     refs = await count_referrals(message.from_user.id)
 
     text = (
-        f"{tg_emoji(EMOJI_4, '🔗')} <b>Реферальная программа</b>\n\n"
+        f"{tg_emoji(e(33), '🔗')} <b>Реферальная программа</b>\n\n"
         "Приглашай друзей по своей ссылке — и получай "
         "<b>+3 дня подписки</b> за каждого, кто оплатит план.\n\n"
-        f"{tg_emoji(EMOJI_1, '👥')} Уже приглашено: <b>{refs}</b>\n\n"
+        f"{tg_emoji(e(30), '👥')} Уже приглашено: <b>{refs}</b>\n\n"
         f"Твоя ссылка:\n<code>{link}</code>"
     )
     await message.answer(text, reply_markup=back_to_menu_kb)
@@ -114,24 +114,24 @@ async def referral_menu_from_reply(message: Message):
 
 @router.message(F.text == "Мои объявления")
 async def my_ads(message: Message):
-    await message.answer("📭 Пока нет объявлений. Нажми «Добавить объявление», чтобы создать первое.")
+    await message.answer(f"{tg_emoji(e(34), '📭')} Пока нет объявлений. Нажми «Добавить объявление», чтобы создать первое.")
 
 
 @router.message(F.text == "Добавить объявление")
 async def add_ad(message: Message):
-    await message.answer("✍️ Функция добавления объявлений скоро будет доступна.")
+    await message.answer(f"{tg_emoji(e(35), '✍️')} Функция добавления объявлений скоро будет доступна.")
 
 
 @router.message(F.text == "Мои группы")
 async def my_groups(message: Message):
-    await message.answer("📭 Группы для автопостинга пока не добавлены.")
+    await message.answer(f"{tg_emoji(e(34), '📭')} Группы для автопостинга пока не добавлены.")
 
 
 @router.message(F.text == "Автопостинг")
 async def autopost_menu(message: Message):
-    await message.answer("🚀 Раздел автопостинга в разработке — скоро здесь можно будет запускать рассылку по группам.")
+    await message.answer(f"{tg_emoji(e(31), '🚀')} Раздел автопостинга в разработке — скоро здесь можно будет запускать рассылку по группам.")
 
 
 @router.message(F.text == "Настройки")
 async def settings_menu(message: Message):
-    await message.answer("⚙️ Настройки скоро появятся здесь.")
+    await message.answer(f"{tg_emoji(e(36), '⚙️')} Настройки скоро появятся здесь.")
