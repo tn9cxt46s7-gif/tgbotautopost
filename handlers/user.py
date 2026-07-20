@@ -55,7 +55,12 @@ async def build_profile_text(telegram_id: int, username: str | None) -> str:
     )
 
 
-@router.message(F.text == "👤 Профиль")
+# ВАЖНО: тексты в F.text == "..." должны 1-в-1 совпадать с text=
+# у KeyboardButton в keyboards.py. Эмодзи там больше нет в самом
+# тексте (иконка показывается через icon_custom_emoji_id), поэтому
+# и здесь фильтры без эмодзи.
+
+@router.message(F.text == "Профиль")
 async def profile_handler(message: Message):
     text = await build_profile_text(message.from_user.id, message.from_user.username)
     await message.answer(text, reply_markup=profile_menu)
@@ -85,26 +90,42 @@ async def referral_menu(callback: CallbackQuery):
     await callback.answer()
 
 
-@router.message(F.text == "📝 Мои объявления")
+@router.message(F.text == "Рефералка")
+async def referral_menu_from_reply(message: Message):
+    bot_info = await message.bot.get_me()
+    link = f"https://t.me/{bot_info.username}?start=ref_{message.from_user.id}"
+    refs = await count_referrals(message.from_user.id)
+
+    text = (
+        "🔗 <b>Реферальная программа</b>\n\n"
+        "Приглашай друзей по своей ссылке — и получай "
+        "<b>+3 дня подписки</b> за каждого, кто оплатит план.\n\n"
+        f"👥 Уже приглашено: <b>{refs}</b>\n\n"
+        f"Твоя ссылка:\n<code>{link}</code>"
+    )
+    await message.answer(text, reply_markup=back_to_menu_kb)
+
+
+@router.message(F.text == "Мои объявления")
 async def my_ads(message: Message):
-    await message.answer("📭 Пока нет объявлений. Нажми «➕ Добавить объявление», чтобы создать первое.")
+    await message.answer("📭 Пока нет объявлений. Нажми «Добавить объявление», чтобы создать первое.")
 
 
-@router.message(F.text == "➕ Добавить объявление")
+@router.message(F.text == "Добавить объявление")
 async def add_ad(message: Message):
     await message.answer("✍️ Функция добавления объявлений скоро будет доступна.")
 
 
-@router.message(F.text == "👥 Мои группы")
+@router.message(F.text == "Мои группы")
 async def my_groups(message: Message):
     await message.answer("📭 Группы для автопостинга пока не добавлены.")
 
 
-@router.message(F.text == "🚀 Автопостинг")
+@router.message(F.text == "Автопостинг")
 async def autopost_menu(message: Message):
     await message.answer("🚀 Раздел автопостинга в разработке — скоро здесь можно будет запускать рассылку по группам.")
 
 
-@router.message(F.text == "⚙️ Настройки")
+@router.message(F.text == "Настройки")
 async def settings_menu(message: Message):
     await message.answer("⚙️ Настройки скоро появятся здесь.")
