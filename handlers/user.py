@@ -3,8 +3,14 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import CommandStart, CommandObject
 
-from keyboards import main_menu, profile_menu, back_to_menu_kb
+from keyboards import main_menu, profile_menu, back_to_menu_kb, EMOJI_1, EMOJI_2, EMOJI_3, EMOJI_4
 from database import get_or_create_user, get_user, count_referrals
+
+# Кастомные эмодзи в HTML-разметке Telegram: <tg-emoji emoji-id="...">fallback</tg-emoji>
+# Fallback-символ внутри тега — это обычный эмодзи, который покажется там,
+# где кастомные эмодзи не поддерживаются (например, в некоторых клиентах).
+def tg_emoji(emoji_id: int, fallback: str) -> str:
+    return f'<tg-emoji emoji-id="{emoji_id}">{fallback}</tg-emoji>'
 
 router = Router()
 
@@ -24,10 +30,10 @@ async def cmd_start(message: Message, command: CommandObject):
     )
 
     await message.answer(
-        "👋 <b>Добро пожаловать в бота автопостинга!</b>\n\n"
-        "🚀 Автоматическая публикация объявлений в твои группы\n"
-        "💎 Гибкая система подписки\n"
-        "🔗 Реферальная программа с бонусами\n\n"
+        f"{tg_emoji(EMOJI_1, '👋')} <b>Добро пожаловать в бота автопостинга!</b>\n\n"
+        f"{tg_emoji(EMOJI_2, '🚀')} Автоматическая публикация объявлений в твои группы\n"
+        f"{tg_emoji(EMOJI_3, '💎')} Гибкая система подписки\n"
+        f"{tg_emoji(EMOJI_4, '🔗')} Реферальная программа с бонусами\n\n"
         "Выбирай раздел в меню ниже 👇",
         reply_markup=main_menu
     )
@@ -47,11 +53,11 @@ async def build_profile_text(telegram_id: int, username: str | None) -> str:
     refs = await count_referrals(telegram_id)
 
     return (
-        "👤 <b>Твой профиль</b>\n\n"
-        f"🆔 ID: <code>{telegram_id}</code>\n"
-        f"🔖 Username: @{username or '—'}\n"
-        f"💎 Подписка: {sub_status}\n"
-        f"👥 Приглашено друзей: <b>{refs}</b>\n"
+        f"{tg_emoji(EMOJI_1, '👤')} <b>Твой профиль</b>\n\n"
+        f"{tg_emoji(EMOJI_2, '🆔')} ID: <code>{telegram_id}</code>\n"
+        f"{tg_emoji(EMOJI_3, '🔖')} Username: @{username or '—'}\n"
+        f"{tg_emoji(EMOJI_4, '💎')} Подписка: {sub_status}\n"
+        f"{tg_emoji(EMOJI_1, '👥')} Приглашено друзей: <b>{refs}</b>\n"
     )
 
 
@@ -80,10 +86,10 @@ async def referral_menu(callback: CallbackQuery):
     refs = await count_referrals(callback.from_user.id)
 
     text = (
-        "🔗 <b>Реферальная программа</b>\n\n"
+        f"{tg_emoji(EMOJI_4, '🔗')} <b>Реферальная программа</b>\n\n"
         "Приглашай друзей по своей ссылке — и получай "
         "<b>+3 дня подписки</b> за каждого, кто оплатит план.\n\n"
-        f"👥 Уже приглашено: <b>{refs}</b>\n\n"
+        f"{tg_emoji(EMOJI_1, '👥')} Уже приглашено: <b>{refs}</b>\n\n"
         f"Твоя ссылка:\n<code>{link}</code>"
     )
     await callback.message.edit_text(text, reply_markup=back_to_menu_kb)
@@ -97,10 +103,10 @@ async def referral_menu_from_reply(message: Message):
     refs = await count_referrals(message.from_user.id)
 
     text = (
-        "🔗 <b>Реферальная программа</b>\n\n"
+        f"{tg_emoji(EMOJI_4, '🔗')} <b>Реферальная программа</b>\n\n"
         "Приглашай друзей по своей ссылке — и получай "
         "<b>+3 дня подписки</b> за каждого, кто оплатит план.\n\n"
-        f"👥 Уже приглашено: <b>{refs}</b>\n\n"
+        f"{tg_emoji(EMOJI_1, '👥')} Уже приглашено: <b>{refs}</b>\n\n"
         f"Твоя ссылка:\n<code>{link}</code>"
     )
     await message.answer(text, reply_markup=back_to_menu_kb)
