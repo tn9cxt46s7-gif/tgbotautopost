@@ -5,10 +5,10 @@ from aiogram.types import (
 
 main_menu = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="🚀 Автопостинг"), KeyboardButton(text="👤 Профиль")],
+        [KeyboardButton(text="✈️ Автопостинг"), KeyboardButton(text="👤 Профиль")],
         [KeyboardButton(text="💎 Подписка"), KeyboardButton(text="🔗 Рефералка")],
-        [KeyboardButton(text="📝 Мои объявления"), KeyboardButton(text="➕ Добавить объявление")],
-        [KeyboardButton(text="👥 Мои группы"), KeyboardButton(text="⚙️ Настройки")],
+        [KeyboardButton(text="🗂 Мои объявления"), KeyboardButton(text="➕ Добавить")],
+        [KeyboardButton(text="👥 Группы"), KeyboardButton(text="⚙️ Настройки")],
     ],
     resize_keyboard=True
 )
@@ -24,7 +24,7 @@ profile_menu = InlineKeyboardMarkup(inline_keyboard=[
 ])
 
 back_to_menu_kb = InlineKeyboardMarkup(inline_keyboard=[
-    [InlineKeyboardButton(text="◀️ В профиль", callback_data="back_to_profile")]
+    [InlineKeyboardButton(text="◀️ Назад", callback_data="back_to_profile")]
 ])
 
 
@@ -42,7 +42,7 @@ def subscription_plans_kb(plans: dict) -> InlineKeyboardMarkup:
 def payment_method_kb(plan_key: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="⭐ Telegram Stars", callback_data=f"pay_stars_{plan_key}")],
-        [InlineKeyboardButton(text="💳 Банковская карта", callback_data=f"pay_card_{plan_key}")],
-        [InlineKeyboardButton(text="₿ Криптовалюта", callback_data=f"pay_crypto_{plan_key}")],
+        [InlineKeyboardButton(text="💳 Карта", callback_data=f"pay_card_{plan_key}")],
+        [InlineKeyboardButton(text="₿ Крипто", callback_data=f"pay_crypto_{plan_key}")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="sub_menu")],
     ])
