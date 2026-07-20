@@ -73,7 +73,9 @@ def build_ad_variants(text: str, price: str | None, seed: int) -> str:
     return "\n\n".join(parts) + spacer
 
 
-def due_for_group(group, ad, now: datetime) -> bool:
+def due_for_group(group, ad, now: datetime, force: bool = False) -> bool:
+    if force:
+        return True
     if group.cooldown_until and group.cooldown_until > now:
         return False
     if _in_quiet_hours(now, group.quiet_hours_start or 0, group.quiet_hours_end or 0):
@@ -129,8 +131,10 @@ async def _assist_forward(bot: Bot, ad, group, user, text: str) -> None:
     """Send ready post to user DM — they forward it into the marketplace group."""
     title = group.title or str(group.chat_id)
     header = (
-        f"📣 Пора запостить в <b>{title}</b>\n"
-        f"Перешли следующее сообщение в эту группу 👇"
+        f"📣 Пора в <b>{title}</b>\n\n"
+        "Бот <b>не может сам писать</b> в барахолки (туда не пускают ботов).\n"
+        "Ниже готовый пост — <b>перешли его в группу</b> "
+        "(зажми сообщение → Переслать)."
     )
     await bot.send_message(user.telegram_id, header)
 
@@ -262,3 +266,42 @@ async def run_posting_cycle(bot: Bot):
                     await asyncio.sleep(delay)
                 else:
                     await asyncio.sleep(5)
+
+
+async def run_posting_for_telegram_user(bot: Bot, telegram_id: int, force: bool = False) -> dict:
+    """
+    Post (or assist-DM) for one user right now.
+    Works on Vercel webhook — no scheduler needed.
+    Returns counts for UI.
+    """
+    from database import get_user, get_user_ads
+
+    user = await get_user(telegram_id)
+    if not user:
+        return {"ok": 0, "skip": 0, "reason": "no_user"}
+    if not user.autopost_enabled and not force:
+        return {"ok": 0, "skip": 0, "reason": "autopost_off"}
+
+    ads = [a for a in await get_user_ads(user.id) if a.status == "active"]
+    groups = [g for g in await get_active_groups_for_user(user.id)]
+    if not ads:
+        return {"ok": 0, "skip": 0, "reason": "no_ads"}
+    if not groups:
+        return {"ok": 0, "skip": 0, "reason": "no_groups"}
+
+    now = datetime.utcnow()
+    ok_n = 0
+    skip_n = 0
+    for ad in ads:
+        for group in groups:
+            if not due_for_group(group, ad, now, force=force):
+                skip_n += 1
+                continue
+            if await post_ad_to_group(bot, ad, group, user):
+                ok_n += 1
+                await asyncio.sleep(1.5)
+            else:
+                skip_n += 1
+                await asyncio.sleep(1)
+    return {"ok": ok_n, "skip": skip_n, "reason": None, "assist": not user_has_tg_account(user)}
+

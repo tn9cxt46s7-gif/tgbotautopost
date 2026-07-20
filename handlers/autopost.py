@@ -1,4 +1,4 @@
-from aiogram import Router, F
+from aiogram import Router, F, Bot
 from aiogram.types import Message, CallbackQuery
 
 from keyboards import autopost_kb
@@ -8,6 +8,7 @@ from database import (
 )
 from utils.emoji import tg_emoji
 from utils.subscription import has_active_subscription
+from services.poster import run_posting_for_telegram_user
 
 router = Router()
 
@@ -27,9 +28,9 @@ async def build_autopost_text(telegram_id: int) -> tuple[str, bool]:
     status = "работает" if ready else "остановлен"
 
     if linked:
-        mode = "полный автопост от твоего аккаунта (QR)"
+        mode = "полный автопост от аккаунта"
     else:
-        mode = "без входа: бот пришлёт готовый пост → ты пересылаешь в группу"
+        mode = "в личку готовый пост → ты пересылаешь в группу"
 
     text = (
         f"{tg_emoji('AUTO')} <b>Автопостинг</b>\n\n"
@@ -39,8 +40,10 @@ async def build_autopost_text(telegram_id: int) -> tuple[str, bool]:
         f"Режим: <b>{mode}</b>\n\n"
         f"{tg_emoji('ADS')} Активных объявлений: <b>{len(active_ads)}</b> / {len(ads)}\n"
         f"{tg_emoji('GROUPS')} Активных групп: <b>{len(active_groups)}</b> / {len(groups)}\n\n"
-        "Авторизация аккаунта <b>не обязательна</b>.\n"
-        "QR в «Мой аккаунт» — только если хочешь посты совсем без ручной пересылки."
+        "⚠️ В барахолки бот <b>сам не пишет</b> — Telegram так не даёт.\n"
+        "Жми <b>«Запостить сейчас»</b> — пришлю пост сюда, перешли в группу.\n"
+        "На Vercel расписание само почти не крутится; для авто — "
+        "<code>python main.py</code> на ПК."
     )
     return text, user.autopost_enabled
 
@@ -52,7 +55,7 @@ async def autopost_menu(message: Message):
 
 
 @router.callback_query(F.data == "ap_start")
-async def ap_start(callback: CallbackQuery):
+async def ap_start(callback: CallbackQuery, bot: Bot):
     user = await get_or_create_user(callback.from_user.id, callback.from_user.username)
     if not has_active_subscription(user):
         await callback.answer("Нужна активная подписка", show_alert=True)
@@ -68,7 +71,40 @@ async def ap_start(callback: CallbackQuery):
     await set_autopost_enabled(callback.from_user.id, True)
     text, enabled = await build_autopost_text(callback.from_user.id)
     await callback.message.edit_text(text, reply_markup=autopost_kb(enabled))
-    await callback.answer("Автопостинг включён")
+    await callback.answer("Включено — шлю посты…")
+
+    result = await run_posting_for_telegram_user(bot, callback.from_user.id, force=True)
+    if result["ok"] == 0:
+        reason = {
+            "no_ads": "Нет активных объявлений",
+            "no_groups": "Нет активных групп",
+            "no_user": "Пользователь не найден",
+        }.get(result.get("reason") or "", "Нечего слать — проверь объявления и группы")
+        await bot.send_message(callback.from_user.id, f"{tg_emoji('WARN')} {reason}")
+
+
+@router.callback_query(F.data == "ap_now")
+async def ap_now(callback: CallbackQuery, bot: Bot):
+    user = await get_or_create_user(callback.from_user.id, callback.from_user.username)
+    if not has_active_subscription(user):
+        await callback.answer("Нужна активная подписка", show_alert=True)
+        return
+    await callback.answer("Готовлю посты…")
+    result = await run_posting_for_telegram_user(bot, callback.from_user.id, force=True)
+    if result["ok"] > 0:
+        where = "в личку (перешли в группы)" if result.get("assist") else "в группы"
+        await bot.send_message(
+            callback.from_user.id,
+            f"{tg_emoji('OK')} Отправлено: <b>{result['ok']}</b> {where}.",
+        )
+    else:
+        reason = {
+            "no_ads": "Нет активных объявлений — создай и нажми «Запустить»",
+            "no_groups": "Нет групп — добавь в «Мои группы»",
+            "no_user": "Ошибка профиля",
+            "autopost_off": "Сначала включи автопостинг",
+        }.get(result.get("reason") or "", "Не удалось отправить — проверь объявления и группы")
+        await bot.send_message(callback.from_user.id, f"{tg_emoji('WARN')} {reason}")
 
 
 @router.callback_query(F.data == "ap_stop")

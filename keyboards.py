@@ -223,6 +223,11 @@ def autopost_kb(enabled: bool) -> InlineKeyboardMarkup:
     else:
         btn = InlineKeyboardButton(text="Запустить автопостинг", callback_data="ap_start", icon_custom_emoji_id=eid("PLAY"))
     return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(
+            text="Запостить сейчас",
+            callback_data="ap_now",
+            icon_custom_emoji_id=eid("FIRE"),
+        )],
         [btn],
         [InlineKeyboardButton(text="Мои объявления", callback_data="ads_list", icon_custom_emoji_id=eid("ADS"))],
         [InlineKeyboardButton(text="Мои группы", callback_data="groups_list", icon_custom_emoji_id=eid("GROUPS"))],
