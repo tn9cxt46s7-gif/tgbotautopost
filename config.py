@@ -4,7 +4,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
-DB_URL = os.getenv("DB_URL", "sqlite+aiosqlite:///bot.db")
+
+# On Vercel filesystem is read-only except /tmp
+if os.getenv("VERCEL") and not os.getenv("DB_URL"):
+    DB_URL = "sqlite+aiosqlite:////tmp/bot.db"
+else:
+    DB_URL = os.getenv("DB_URL", "sqlite+aiosqlite:///bot.db")
 
 # Comma-separated Telegram IDs, e.g. "8414329140,123456789"
 _raw_admins = os.getenv("ADMIN_IDS", "8414329140")

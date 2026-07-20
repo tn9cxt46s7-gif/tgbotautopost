@@ -11,7 +11,25 @@
 - Чат поддержки (юзер ↔ админ)
 - Админ-панель `/admin`: статистика, юзеры, подписки, объявления, группы, рассылка, тикеты
 
-## Деплой на Render (24/7)
+## Деплой на Vercel (бесплатно, с ограничениями)
+
+Бот **может отвечать** на кнопки через webhook. Автопостинг на бесплатном Vercel слабый (база в `/tmp` сбрасывается, cron раз в сутки).
+
+1. Vercel → Import GitHub repo `tgbotautopost`
+2. **Settings → Environment Variables** добавь:
+
+| Key | Value |
+|-----|--------|
+| `BOT_TOKEN` | токен BotFather |
+| `ADMIN_IDS` | твой Telegram ID |
+
+3. Redeploy (Deployments → Redeploy)
+4. Открой в браузере: `https://ТВОЙ-ПРОЕКТ.vercel.app/setup-webhook`
+5. Должно показать `"ok": true`
+6. В Telegram напиши боту `/start`
+
+Если не отвечает — открой `/setup-webhook` ещё раз и проверь, что `BOT_TOKEN` точно в Environment Variables (Production).
+
 
 1. Зайди на [render.com](https://render.com) → **New** → **Background Worker**
 2. Подключи GitHub-репозиторий `tgbotautopost`
