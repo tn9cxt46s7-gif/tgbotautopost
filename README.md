@@ -11,7 +11,42 @@
 - Чат поддержки (юзер ↔ админ)
 - Админ-панель `/admin`: статистика, юзеры, подписки, объявления, группы, рассылка, тикеты
 
-## Быстрый старт
+## Деплой на Render (24/7)
+
+1. Зайди на [render.com](https://render.com) → **New** → **Background Worker**
+2. Подключи GitHub-репозиторий `tgbotautopost`
+3. Настройки:
+   - **Runtime:** Python
+   - **Build Command:** `pip install -r requirements.txt`
+   - **Start Command:** `python main.py`
+4. **Environment** (Environment Variables):
+
+| Key | Value |
+|-----|-------|
+| `BOT_TOKEN` | токен от BotFather |
+| `ADMIN_IDS` | твой Telegram ID |
+| `DB_URL` | `sqlite+aiosqlite:///bot.db` |
+| `PYTHON_VERSION` | `3.11.9` |
+
+5. **Create Worker** → дождись статуса **Live**
+6. Напиши боту `/start`
+
+> Важно: выбирай **Background Worker**, не Web Service.  
+> Web Service на Render ждёт HTTP-порт — для polling-бота это ломает деплой.
+
+Если раньше ставил webhook на Vercel — не страшно: при старте бот сам снимает webhook.
+
+### База данных
+
+SQLite на бесплатном Render может сброситься при редеплое.  
+Для серьёзной работы: **New → PostgreSQL** в Render, скопируй Internal Database URL и в `DB_URL` поставь:
+
+```
+postgresql+asyncpg://user:pass@host/dbname
+```
+
+(замени `postgres://` в начале на `postgresql+asyncpg://`)
+
 
 ```bash
 python -m venv .venv

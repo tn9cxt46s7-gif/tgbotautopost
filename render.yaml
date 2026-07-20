@@ -1,0 +1,16 @@
+services:
+  - type: worker
+    name: tgbotautopost
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: BOT_TOKEN
+        sync: false
+      - key: ADMIN_IDS
+        sync: false
+      - key: DB_URL
+        value: sqlite+aiosqlite:///bot.db
