@@ -84,7 +84,7 @@ def account_kb(linked: bool) -> InlineKeyboardMarkup:
     if linked:
         rows = [
             [InlineKeyboardButton(
-                text="Отвязать аккаунт",
+                text="Отключить публикацию",
                 callback_data="account_unlink",
                 icon_custom_emoji_id=eid("LOCK"),
             )],
@@ -92,9 +92,14 @@ def account_kb(linked: bool) -> InlineKeyboardMarkup:
     else:
         rows = [
             [InlineKeyboardButton(
-                text="Привязать аккаунт",
+                text="Подключить через QR",
                 callback_data="account_link",
                 icon_custom_emoji_id=eid("LINK"),
+            )],
+            [InlineKeyboardButton(
+                text="Запасной способ (номер)",
+                callback_data="account_link_phone",
+                icon_custom_emoji_id=eid("WARN"),
             )],
         ]
     rows.append([InlineKeyboardButton(

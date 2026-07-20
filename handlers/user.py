@@ -34,12 +34,11 @@ async def cmd_start(message: Message, command: CommandObject, state: FSMContext)
 
     await message.answer(
         f"{tg_emoji('WAVE')} <b>Добро пожаловать в бота автопостинга!</b>\n\n"
-        f"{tg_emoji('AUTO')} Автопубликация в барахолки <b>от твоего аккаунта</b>\n"
-        f"{tg_emoji('USER')} Привязка Telegram в «Мой аккаунт»\n"
-        f"{tg_emoji('SUB')} Гибкая подписка\n"
-        f"{tg_emoji('REF')} Реферальная программа\n"
-        f"{tg_emoji('SUPPORT')} Чат поддержки\n\n"
-        "Сначала привяжи аккаунт → добавь группы → объявления → автопостинг 👇",
+        f"{tg_emoji('AUTO')} Готовые посты по расписанию — без входа в аккаунт\n"
+        f"{tg_emoji('GROUPS')} Группы + объявления + автопостинг\n"
+        f"{tg_emoji('USER')} Опционально: QR для полного автопоста\n"
+        f"{tg_emoji('SUB')} Подписка · {tg_emoji('SUPPORT')} поддержка\n\n"
+        "Добавь группы → объявление → включи автопостинг 👇",
         reply_markup=main_menu,
     )
 

@@ -81,10 +81,98 @@ def mask_phone(phone: str | None) -> str:
 
 def _new_client(session: str = "") -> TelegramClient:
     if not api_configured():
-        raise AccountError(
-            "Админ ещё не настроил TG_API_ID / TG_API_HASH (my.telegram.org)."
-        )
+        raise AccountError("Подключение временно недоступно. Напиши в поддержку.")
     return TelegramClient(StringSession(session), TG_API_ID, TG_API_HASH)
+
+
+def make_qr_png(url: str) -> bytes:
+    import qrcode
+    img = qrcode.make(url)
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+# Active QR logins: telegram_id -> TelegramClient still connected with qr_login
+_qr_clients: dict[int, TelegramClient] = {}
+
+
+async def cancel_qr_login(telegram_id: int) -> None:
+    client = _qr_clients.pop(telegram_id, None)
+    if client:
+        try:
+            await client.disconnect()
+        except Exception:
+            pass
+
+
+async def begin_qr_login(telegram_id: int) -> tuple[str, bytes]:
+    """Start QR login. Returns (tg_login_url, png_bytes). Keeps client connected until wait/cancel."""
+    await cancel_qr_login(telegram_id)
+    client = _new_client()
+    await client.connect()
+    try:
+        qr = await client.qr_login()
+        _qr_clients[telegram_id] = client
+        # stash qr object on client for wait
+        client._eb_qr = qr  # type: ignore[attr-defined]
+        return qr.url, make_qr_png(qr.url)
+    except Exception:
+        await client.disconnect()
+        raise
+
+
+async def wait_qr_login(telegram_id: int, timeout: float = 90) -> tuple[str, str | None]:
+    """
+    Wait until user scans QR. Returns (raw_session, display_name).
+    Raises Need2FA or AccountError.
+    """
+    client = _qr_clients.get(telegram_id)
+    if not client:
+        raise AccountError("QR устарел. Нажми «Подключить через QR» снова.")
+    qr = getattr(client, "_eb_qr", None)
+    if qr is None:
+        await cancel_qr_login(telegram_id)
+        raise AccountError("QR устарел. Начни снова.")
+
+    try:
+        try:
+            await qr.wait(timeout=timeout)
+        except SessionPasswordNeededError as e:
+            pending = client.session.save()
+            await cancel_qr_login(telegram_id)
+            raise Need2FA(pending) from e
+        except asyncio.TimeoutError as e:
+            await cancel_qr_login(telegram_id)
+            raise AccountError("Время QR вышло. Нажми «Подключить через QR» ещё раз.") from e
+
+        me = await client.get_me()
+        name = " ".join(x for x in [me.first_name, me.last_name] if x) or me.username or str(me.id)
+        raw = client.session.save()
+        await cancel_qr_login(telegram_id)
+        return raw, name
+    except Need2FA:
+        raise
+    except AccountError:
+        raise
+    except Exception:
+        await cancel_qr_login(telegram_id)
+        raise
+
+
+async def finish_password_login(pending_session: str, password: str) -> tuple[str, str | None]:
+    """Complete 2FA after phone or QR login."""
+    client = _new_client(pending_session)
+    await client.connect()
+    try:
+        await client.sign_in(password=password)
+        me = await client.get_me()
+        name = " ".join(x for x in [me.first_name, me.last_name] if x) or me.username or str(me.id)
+        return client.session.save(), name
+    except SessionPasswordNeededError as e:
+        raise AccountError("Неверный облачный пароль.") from e
+    finally:
+        await client.disconnect()
 
 
 async def start_phone_login(phone: str) -> tuple[str, str]:
@@ -108,25 +196,25 @@ async def complete_phone_login(
     password: str | None = None,
 ) -> tuple[str, str | None]:
     """
-    Finish login. Returns (raw_session_string, display_name).
-    Raises Need2FA if cloud password is required (with updated pending session).
+    Finish phone login. Returns (raw_session_string, display_name).
+    Raises Need2FA if cloud password is required.
     """
+    if password is not None:
+        return await finish_password_login(pending_session, password)
+
     phone = normalize_phone(phone)
     code = (code or "").strip().replace(" ", "")
     client = _new_client(pending_session)
     await client.connect()
     try:
         try:
-            if password is not None:
-                await client.sign_in(password=password)
-            else:
-                await client.sign_in(phone, code, phone_code_hash=phone_code_hash)
+            await client.sign_in(phone, code, phone_code_hash=phone_code_hash)
         except SessionPasswordNeededError as e:
             raise Need2FA(client.session.save()) from e
         except PhoneCodeInvalidError as e:
             raise AccountError("Неверный код. Попробуй ещё раз.") from e
         except PhoneCodeExpiredError as e:
-            raise AccountError("Код устарел. Начни привязку заново.") from e
+            raise AccountError("Код устарел. Начни подключение заново.") from e
 
         me = await client.get_me()
         name = " ".join(x for x in [me.first_name, me.last_name] if x) or me.username or str(me.id)
@@ -198,6 +286,10 @@ __all__ = [
     "decrypt_session",
     "normalize_phone",
     "mask_phone",
+    "begin_qr_login",
+    "wait_qr_login",
+    "cancel_qr_login",
+    "finish_password_login",
     "start_phone_login",
     "complete_phone_login",
     "verify_session",

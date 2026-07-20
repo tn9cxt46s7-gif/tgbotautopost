@@ -1,4 +1,4 @@
-"""Anti-ban poster: posts from the client's Telegram account via Telethon."""
+"""Anti-ban poster: user-account auto OR assist (DM ready post to forward)."""
 
 from __future__ import annotations
 
@@ -22,6 +22,7 @@ from database import (
     update_group,
     add_post_log,
     set_user_tg_session,
+    user_has_tg_account,
 )
 from services.user_client import AccountError, FloodWaitError, send_as_user
 
@@ -32,7 +33,6 @@ _last_global_post: datetime | None = None
 
 
 def _in_quiet_hours(now: datetime, start: int, end: int) -> bool:
-    """Return True if current UTC hour is inside quiet window [start, end)."""
     if start == end:
         return False
     hour = now.hour
@@ -42,7 +42,6 @@ def _in_quiet_hours(now: datetime, start: int, end: int) -> bool:
 
 
 def build_ad_variants(text: str, price: str | None, seed: int) -> str:
-    """Produce a slight variation of the ad text to reduce duplicate-spam flags."""
     lines = [ln for ln in text.strip().splitlines() if ln.strip()]
     if not lines:
         body = text.strip()
@@ -90,10 +89,6 @@ def due_for_group(group, ad, now: datetime) -> bool:
     if last and now - last < earliest:
         return False
 
-    ad_interval = timedelta(minutes=ad.interval_minutes or 60)
-    if ad.last_posted_at and now - ad.last_posted_at < ad_interval - timedelta(seconds=jitter or 0):
-        pass
-
     return True
 
 
@@ -118,12 +113,58 @@ async def _download_photo(bot: Bot, file_id: str) -> bytes | None:
         return None
 
 
+async def _mark_ok(ad, group, user, now: datetime, seed: int, how: str):
+    await update_ad(ad.id, last_posted_at=now, variant_seed=seed)
+    await update_group(
+        group.id,
+        last_post_at=now,
+        fail_count=0,
+        cooldown_until=None,
+    )
+    await add_post_log(ad.id, group.id, user.id, "ok", how)
+    logger.info("%s ad=%s group=%s", how, ad.id, group.id)
+
+
+async def _assist_forward(bot: Bot, ad, group, user, text: str) -> None:
+    """Send ready post to user DM — they forward it into the marketplace group."""
+    title = group.title or str(group.chat_id)
+    header = (
+        f"📣 Пора запостить в <b>{title}</b>\n"
+        f"Перешли следующее сообщение в эту группу 👇"
+    )
+    await bot.send_message(user.telegram_id, header)
+
+    if ad.photo_file_id:
+        await bot.send_photo(user.telegram_id, ad.photo_file_id, caption=text)
+    else:
+        await bot.send_message(user.telegram_id, text)
+
+
 async def post_ad_to_group(bot: Bot, ad, group, user) -> bool:
-    """Post one ad to one group from the client's account. Returns True on success."""
+    """Post via linked account, or assist-mode DM if no account linked."""
     now = datetime.utcnow()
     seed = (ad.variant_seed or 0) + 1
     text = build_ad_variants(ad.text, ad.price, seed)
 
+    # ── Assist mode: no account auth required ──────────────────────────────
+    if not user_has_tg_account(user):
+        try:
+            await _global_throttle()
+            await _assist_forward(bot, ad, group, user, text)
+            await _mark_ok(ad, group, user, now, seed, "assist")
+            return True
+        except Exception as e:
+            fails = (group.fail_count or 0) + 1
+            cooldown = datetime.utcnow() + timedelta(minutes=15)
+            kwargs = {"fail_count": fails, "cooldown_until": cooldown}
+            if fails >= MAX_GROUP_FAILS:
+                kwargs["active"] = False
+            await update_group(group.id, **kwargs)
+            await add_post_log(ad.id, group.id, user.id, "error", str(e))
+            logger.exception("Assist post failed ad=%s group=%s", ad.id, group.id)
+            return False
+
+    # ── Full auto: Telethon from client account ────────────────────────────
     photo_bytes = None
     if ad.photo_file_id:
         photo_bytes = await _download_photo(bot, ad.photo_file_id)
@@ -131,16 +172,7 @@ async def post_ad_to_group(bot: Bot, ad, group, user) -> bool:
     try:
         await _global_throttle()
         await send_as_user(user, group.chat_id, text, photo_bytes)
-
-        await update_ad(ad.id, last_posted_at=now, variant_seed=seed)
-        await update_group(
-            group.id,
-            last_post_at=now,
-            fail_count=0,
-            cooldown_until=None,
-        )
-        await add_post_log(ad.id, group.id, user.id, "ok")
-        logger.info("Posted ad=%s group=%s via user account", ad.id, group.id)
+        await _mark_ok(ad, group, user, now, seed, "user_account")
         return True
 
     except FloodWaitError as e:
@@ -155,14 +187,22 @@ async def post_ad_to_group(bot: Bot, ad, group, user) -> bool:
         msg = str(e)
         fails = (group.fail_count or 0) + 1
         kwargs: dict = {"fail_count": fails}
-        if "Сессия" in msg or "привязан" in msg.lower():
+        if "Сессия" in msg or "привязан" in msg.lower() or "недействительна" in msg.lower():
             await set_user_tg_session(user.telegram_id, None)
             try:
                 await bot.send_message(
                     user.telegram_id,
-                    f"⚠️ Сессия аккаунта сброшена: {msg}\n"
-                    "Открой «Мой аккаунт» и привяжи снова.",
+                    f"⚠️ Автопост от аккаунта недоступен: {msg}\n"
+                    "Переключился на режим «пришлю готовый пост — перешли сам».\n"
+                    "Или подключи QR снова в «Мой аккаунт».",
                 )
+            except Exception:
+                pass
+            # fallback to assist once
+            try:
+                await _assist_forward(bot, ad, group, user, text)
+                await _mark_ok(ad, group, user, now, seed, "assist_fallback")
+                return True
             except Exception:
                 pass
         else:
@@ -195,7 +235,6 @@ async def post_ad_to_group(bot: Bot, ad, group, user) -> bool:
 
 
 async def run_posting_cycle(bot: Bot):
-    """One scheduler tick: post due ads to due groups with anti-ban delays."""
     from database import get_active_ads_for_posting
 
     rows = await get_active_ads_for_posting()

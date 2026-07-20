@@ -11,3 +11,4 @@ asyncpg
 apscheduler
 telethon
 cryptography
+qrcode[pil]

@@ -8,7 +8,6 @@ from database import (
 )
 from utils.emoji import tg_emoji
 from utils.subscription import has_active_subscription
-from services.user_client import api_configured
 
 router = Router()
 
@@ -24,21 +23,24 @@ async def build_autopost_text(telegram_id: int) -> tuple[str, bool]:
     linked = user_has_tg_account(user)
 
     sub = "да" if has_active_subscription(user) else "нет"
-    ready = user.autopost_enabled and active_ads and active_groups and linked
+    ready = bool(user.autopost_enabled and active_ads and active_groups)
     status = "работает" if ready else "остановлен"
-    acc = "привязан" if linked else "не привязан"
+
+    if linked:
+        mode = "полный автопост от твоего аккаунта (QR)"
+    else:
+        mode = "без входа: бот пришлёт готовый пост → ты пересылаешь в группу"
 
     text = (
         f"{tg_emoji('AUTO')} <b>Автопостинг</b>\n\n"
         f"Статус: <b>{status}</b>\n"
         f"Переключатель: <b>{'вкл' if user.autopost_enabled else 'выкл'}</b>\n"
         f"Подписка: <b>{sub}</b>\n"
-        f"Аккаунт: <b>{acc}</b>\n\n"
+        f"Режим: <b>{mode}</b>\n\n"
         f"{tg_emoji('ADS')} Активных объявлений: <b>{len(active_ads)}</b> / {len(ads)}\n"
         f"{tg_emoji('GROUPS')} Активных групп: <b>{len(active_groups)}</b> / {len(groups)}\n\n"
-        "Посты уходят <b>от твоего Telegram-аккаунта</b> "
-        "(нужна привязка в «Мой аккаунт»).\n"
-        "Интервалы, тихие часы и антибан — на каждую барахолку."
+        "Авторизация аккаунта <b>не обязательна</b>.\n"
+        "QR в «Мой аккаунт» — только если хочешь посты совсем без ручной пересылки."
     )
     return text, user.autopost_enabled
 
@@ -55,11 +57,13 @@ async def ap_start(callback: CallbackQuery):
     if not has_active_subscription(user):
         await callback.answer("Нужна активная подписка", show_alert=True)
         return
-    if not api_configured():
-        await callback.answer("Админ не настроил TG_API_ID / TG_API_HASH", show_alert=True)
+    groups = await get_user_groups(user.id)
+    ads = await get_user_ads(user.id)
+    if not any(g.active for g in groups):
+        await callback.answer("Сначала добавь группу", show_alert=True)
         return
-    if not user_has_tg_account(user):
-        await callback.answer("Сначала привяжи аккаунт в «Мой аккаунт»", show_alert=True)
+    if not any(a.status == "active" for a in ads):
+        await callback.answer("Сначала запусти объявление", show_alert=True)
         return
     await set_autopost_enabled(callback.from_user.id, True)
     text, enabled = await build_autopost_text(callback.from_user.id)

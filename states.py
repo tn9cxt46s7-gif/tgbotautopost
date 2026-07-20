@@ -26,6 +26,7 @@ class UserSettings(StatesGroup):
 
 
 class AccountLink(StatesGroup):
+    qr_wait = State()
     phone = State()
     code = State()
     password = State()

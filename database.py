@@ -429,7 +429,6 @@ async def get_active_ads_for_posting():
                 User.is_blocked == False,  # noqa: E712
                 User.subscription_end.isnot(None),
                 User.subscription_end > now,
-                User.tg_session.isnot(None),
             )
         )
         return list(result.all())
