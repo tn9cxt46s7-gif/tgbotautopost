@@ -4,8 +4,10 @@
 
 ## Возможности
 
+- Постинг **от аккаунта клиента** (Telethon) — бота в барахолки добавлять не нужно
+- Привязка Telegram: телефон → код → 2FA
 - Создание объявлений на продажу (текст / фото / цена)
-- Привязка групп-барахолок (бот должен быть участником)
+- Выбор групп из меню Telegram
 - Автопостинг с per-group интервалом, джиттером, тихими часами и вариациями текста
 - Подписка через Telegram Stars + рефералка (+3 дня)
 - Чат поддержки (юзер ↔ админ)
@@ -82,7 +84,12 @@ pip install -r requirements.txt
 BOT_TOKEN=123456:ABC...
 ADMIN_IDS=8414329140
 DB_URL=sqlite+aiosqlite:///bot.db
+TG_API_ID=12345678
+TG_API_HASH=your_api_hash_here
 ```
+
+`TG_API_ID` / `TG_API_HASH` возьми на [my.telegram.org](https://my.telegram.org) → API development tools.  
+Без них привязка аккаунта и автопостинг не работают.
 
 Для PostgreSQL:
 
@@ -101,11 +108,14 @@ python main.py
 
 ## Как пользоваться
 
-1. Купи подписку (кнопка «Подписка») или получи её от админа.
-2. Добавь бота в группу барахолки (с правом писать сообщения).
-3. «Мои группы» → «Добавить группу» → перешли сообщение из группы.
+1. Купи подписку («Подписка») или получи от админа.
+2. **«Мой аккаунт» → Привязать** → телефон → код из Telegram (и 2FA, если есть).
+3. «Мои группы» → добавить барахолки из меню (бота туда **не** добавляем).
 4. «Добавить объявление» → текст → фото → цена → «Запустить».
 5. «Автопостинг» → включить.
+
+> Автопостинг и привязка аккаунта стабильно работают через `python main.py` (always-on).  
+> На Vercel webhook меню отвечает, но планировщик и Telethon-логин там ненадёжны.
 
 ## Админка
 
@@ -132,11 +142,12 @@ keyboards.py       # reply/inline + premium emoji
 states.py          # FSM
 utils/emoji.py     # именованные premium emoji
 utils/subscription.py
-handlers/          # user, ads, groups, autopost, support, admin, payments
-services/poster.py # антибан + отправка
+handlers/          # user, account, ads, groups, autopost, support, admin, payments
+services/user_client.py  # Telethon: логин + пост от аккаунта
+services/poster.py # антибан + отправка через user session
 services/scheduler.py
-main.py            # polling entrypoint
-api/index.py       # Vercel webhook (без scheduler)
+main.py            # polling entrypoint (рекомендуется)
+api/index.py       # Vercel webhook (без надёжного автопостинга)
 ```
 
 ## Планы и лимиты

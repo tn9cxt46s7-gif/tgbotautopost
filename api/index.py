@@ -30,6 +30,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from config import BOT_TOKEN, is_admin
 from handlers.user import router as user_router
+from handlers.account import router as account_router
 from handlers.ads import router as ads_router
 from handlers.groups import router as groups_router
 from handlers.autopost import router as autopost_router
@@ -46,6 +47,7 @@ else:
     bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher(storage=MemoryStorage())
     dp.include_router(user_router)
+    dp.include_router(account_router)
     dp.include_router(ads_router)
     dp.include_router(groups_router)
     dp.include_router(autopost_router)
@@ -87,7 +89,7 @@ async def setup_webhook(request: Request):
     await bot.set_webhook(
         url=webhook_url,
         drop_pending_updates=True,
-        allowed_updates=["message", "callback_query", "pre_checkout_query"],
+        allowed_updates=["message", "callback_query", "pre_checkout_query", "my_chat_member"],
     )
     info = await bot.get_webhook_info()
     return {

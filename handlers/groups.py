@@ -1,9 +1,11 @@
-from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery
+from aiogram import Router, F, Bot
+from aiogram.types import Message, CallbackQuery, ChatShared
 from aiogram.fsm.context import FSMContext
 from aiogram.exceptions import TelegramAPIError
 
-from keyboards import main_menu, cancel_kb, groups_list_kb, group_card_kb
+from keyboards import (
+    main_menu, cancel_kb, group_pick_kb, groups_list_kb, group_card_kb,
+)
 from database import (
     get_or_create_user, get_user, create_group, get_group, get_user_groups,
     count_user_groups, update_group, delete_group,
@@ -39,8 +41,7 @@ async def show_groups(target, telegram_id: int, edit: bool = False):
     header = (
         f"{tg_emoji('GROUPS')} <b>Мои группы</b>\n"
         f"Использовано: {len(groups)}/{limits['groups']}\n\n"
-        "Добавь бота в барахолку как участника (лучше с правом писать),\n"
-        "затем перешли любое сообщение из группы сюда."
+        "Нажми «➕ Добавить группу» и выбери барахолку из меню Telegram."
     )
     if not groups:
         text = header + f"\n\n{tg_emoji('EMPTY')} Группы ещё не добавлены."
@@ -53,6 +54,43 @@ async def show_groups(target, telegram_id: int, edit: bool = False):
         await target.answer(text, reply_markup=kb)
 
 
+async def _add_group_for_user(
+    bot: Bot,
+    telegram_id: int,
+    username: str | None,
+    chat_id: int,
+    title: str | None,
+):
+    """Save group by chat_id. Bot membership is NOT required."""
+    user = await get_or_create_user(telegram_id, username)
+    if not has_active_subscription(user):
+        return False, "Нужна активная подписка."
+    limits = effective_limits(user)
+    count = await count_user_groups(user.id)
+    if count >= limits["groups"]:
+        return False, f"Лимит групп: {limits['groups']}."
+
+    # Soft-fetch title if bot already knows the chat; never block on membership
+    if not title:
+        try:
+            chat = await bot.get_chat(chat_id)
+            title = chat.title or str(chat_id)
+        except TelegramAPIError:
+            title = title or str(chat_id)
+
+    group = await create_group(
+        user_id=user.id,
+        chat_id=chat_id,
+        title=title or str(chat_id),
+        min_interval_minutes=user.default_interval or 60,
+        quiet_hours_start=user.quiet_hours_start or 0,
+        quiet_hours_end=user.quiet_hours_end or 6,
+    )
+    if group is None:
+        return False, "Эта группа уже добавлена."
+    return True, f"{tg_emoji('OK')} Группа добавлена!\n\n{format_group(group)}"
+
+
 @router.message(F.text == "Мои группы")
 async def my_groups(message: Message):
     await show_groups(message, message.from_user.id)
@@ -61,6 +99,18 @@ async def my_groups(message: Message):
 @router.callback_query(F.data == "groups_list")
 async def groups_list_cb(callback: CallbackQuery):
     await show_groups(callback.message, callback.from_user.id, edit=True)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "grp_help")
+async def grp_help(callback: CallbackQuery):
+    await callback.message.answer(
+        f"{tg_emoji('SUPPORT')} <b>Как добавить группу</b>\n\n"
+        "1. «Мои группы» → «➕ Добавить группу»\n"
+        "2. Нажми «Выбрать группу»\n"
+        "3. В меню Telegram тапни нужную барахолку\n\n"
+        "Бот в группу добавлять не нужно.",
+    )
     await callback.answer()
 
 
@@ -78,13 +128,27 @@ async def grp_add_start(callback: CallbackQuery, state: FSMContext):
     await state.set_state(GroupAdd.waiting)
     await callback.message.answer(
         f"{tg_emoji('GROUPS')} <b>Добавление группы</b>\n\n"
-        "1. Добавь бота в группу барахолки\n"
-        "2. Перешли сюда любое сообщение из этой группы\n"
-        "   или пришли числовой <code>chat_id</code>\n\n"
+        "Нажми <b>«Выбрать группу»</b> и тапни барахолку в меню Telegram.\n\n"
+        "Можно также переслать сюда любое сообщение из группы.\n"
         "Для отмены — «Отмена».",
-        reply_markup=cancel_kb,
+        reply_markup=group_pick_kb(),
     )
     await callback.answer()
+
+
+@router.message(GroupAdd.waiting, F.chat_shared)
+async def grp_add_chat_shared(message: Message, state: FSMContext):
+    shared: ChatShared = message.chat_shared
+    title = getattr(shared, "title", None)
+    ok, text = await _add_group_for_user(
+        message.bot,
+        message.from_user.id,
+        message.from_user.username,
+        shared.chat_id,
+        title,
+    )
+    await state.clear()
+    await message.answer(text, reply_markup=main_menu)
 
 
 @router.message(GroupAdd.waiting)
@@ -94,48 +158,40 @@ async def grp_add_receive(message: Message, state: FSMContext):
         await message.answer("Отменено.", reply_markup=main_menu)
         return
 
-    user = await get_or_create_user(message.from_user.id, message.from_user.username)
+    if message.text == "Выбрать группу":
+        await message.answer(
+            "Выбери группу в окне Telegram, которое открылось.",
+            reply_markup=group_pick_kb(),
+        )
+        return
+
     chat_id = None
     title = None
 
     if message.forward_from_chat:
         chat_id = message.forward_from_chat.id
         title = message.forward_from_chat.title
+    elif message.forward_origin and getattr(message.forward_origin, "chat", None):
+        chat_id = message.forward_origin.chat.id
+        title = message.forward_origin.chat.title
     elif message.text and message.text.lstrip("-").isdigit():
         chat_id = int(message.text.strip())
     else:
-        await message.answer("Перешли сообщение из группы или пришли chat_id числом.")
+        await message.answer(
+            "Нажми «Выбрать группу» или перешли сообщение из барахолки.",
+            reply_markup=group_pick_kb(),
+        )
         return
 
-    # Verify bot can access the chat
-    try:
-        chat = await message.bot.get_chat(chat_id)
-        title = title or chat.title or str(chat_id)
-        me = await message.bot.get_me()
-        member = await message.bot.get_chat_member(chat_id, me.id)
-        if member.status in ("left", "kicked"):
-            await message.answer(f"{tg_emoji('WARN')} Бот не состоит в этом чате. Добавь его и повтори.")
-            return
-    except TelegramAPIError as e:
-        await message.answer(f"{tg_emoji('WARN')} Не удалось проверить чат: {e}")
-        return
-
-    group = await create_group(
-        user_id=user.id,
-        chat_id=chat_id,
-        title=title,
-        min_interval_minutes=user.default_interval or 60,
-        quiet_hours_start=user.quiet_hours_start or 0,
-        quiet_hours_end=user.quiet_hours_end or 6,
+    ok, text = await _add_group_for_user(
+        message.bot,
+        message.from_user.id,
+        message.from_user.username,
+        chat_id,
+        title,
     )
     await state.clear()
-    if group is None:
-        await message.answer("Эта группа уже добавлена.", reply_markup=main_menu)
-        return
-    await message.answer(
-        f"{tg_emoji('OK')} Группа добавлена!\n\n{format_group(group)}",
-        reply_markup=main_menu,
-    )
+    await message.answer(text, reply_markup=main_menu)
 
 
 @router.callback_query(F.data.startswith("grp_view_"))

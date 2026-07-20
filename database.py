@@ -31,6 +31,9 @@ _MIGRATIONS = [
     ("users", "default_interval", "INTEGER DEFAULT 60"),
     ("users", "quiet_hours_start", "INTEGER DEFAULT 0"),
     ("users", "quiet_hours_end", "INTEGER DEFAULT 6"),
+    ("users", "tg_session", "TEXT"),
+    ("users", "tg_phone", "VARCHAR"),
+    ("users", "tg_account_name", "VARCHAR"),
     # ads
     ("ads", "title", "VARCHAR"),
     ("ads", "price", "VARCHAR"),
@@ -267,6 +270,36 @@ async def update_user_settings(
         return user
 
 
+async def set_user_tg_session(
+    telegram_id: int,
+    session_encrypted: str | None,
+    phone: str | None = None,
+    account_name: str | None = None,
+):
+    from models import User
+    async with AsyncSession() as session:
+        result = await session.execute(select(User).where(User.telegram_id == telegram_id))
+        user = result.scalar_one_or_none()
+        if not user:
+            return None
+        user.tg_session = session_encrypted
+        if session_encrypted is None:
+            user.tg_phone = None
+            user.tg_account_name = None
+        else:
+            if phone is not None:
+                user.tg_phone = phone
+            if account_name is not None:
+                user.tg_account_name = account_name
+        await session.commit()
+        await session.refresh(user)
+        return user
+
+
+def user_has_tg_account(user) -> bool:
+    return bool(user and user.tg_session)
+
+
 async def get_subscribed_telegram_ids() -> list[int]:
     from models import User
     now = datetime.utcnow()
@@ -396,6 +429,7 @@ async def get_active_ads_for_posting():
                 User.is_blocked == False,  # noqa: E712
                 User.subscription_end.isnot(None),
                 User.subscription_end > now,
+                User.tg_session.isnot(None),
             )
         )
         return list(result.all())

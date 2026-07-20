@@ -1,8 +1,12 @@
 from aiogram.types import (
     ReplyKeyboardMarkup, KeyboardButton,
     InlineKeyboardMarkup, InlineKeyboardButton,
+    KeyboardButtonRequestChat,
 )
 from utils.emoji import eid
+
+# request_id for chat picker (returned in chat_shared)
+REQ_GROUP_ANY = 102
 
 
 # ── Reply menus ────────────────────────────────────────────────────────────
@@ -23,9 +27,10 @@ main_menu = ReplyKeyboardMarkup(
         ],
         [
             KeyboardButton(text="Мои группы", icon_custom_emoji_id=eid("GROUPS")),
-            KeyboardButton(text="Настройки", icon_custom_emoji_id=eid("SETTINGS")),
+            KeyboardButton(text="Мой аккаунт", icon_custom_emoji_id=eid("USER")),
         ],
         [
+            KeyboardButton(text="Настройки", icon_custom_emoji_id=eid("SETTINGS")),
             KeyboardButton(text="Поддержка", icon_custom_emoji_id=eid("SUPPORT")),
         ],
     ],
@@ -37,6 +42,29 @@ cancel_kb = ReplyKeyboardMarkup(
     resize_keyboard=True,
 )
 
+
+def group_pick_kb() -> ReplyKeyboardMarkup:
+    """Native Telegram chat picker — any group/supergroup, bot need not be a member."""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [
+                KeyboardButton(
+                    text="Выбрать группу",
+                    request_chat=KeyboardButtonRequestChat(
+                        request_id=REQ_GROUP_ANY,
+                        chat_is_channel=False,
+                        request_title=True,
+                        request_username=True,
+                    ),
+                    icon_custom_emoji_id=eid("GROUPS"),
+                )
+            ],
+            [KeyboardButton(text="Отмена")],
+        ],
+        resize_keyboard=True,
+        one_time_keyboard=True,
+    )
+
 support_exit_kb = ReplyKeyboardMarkup(
     keyboard=[[KeyboardButton(text="Завершить диалог", icon_custom_emoji_id=eid("OK"))]],
     resize_keyboard=True,
@@ -46,9 +74,35 @@ support_exit_kb = ReplyKeyboardMarkup(
 # ── Profile / common ───────────────────────────────────────────────────────
 
 profile_menu = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="Мой аккаунт", callback_data="account_menu", icon_custom_emoji_id=eid("USER"))],
     [InlineKeyboardButton(text="Купить подписку", callback_data="sub_menu", icon_custom_emoji_id=eid("SUB"))],
     [InlineKeyboardButton(text="Реферальная программа", callback_data="ref_menu", icon_custom_emoji_id=eid("REF"))],
 ])
+
+
+def account_kb(linked: bool) -> InlineKeyboardMarkup:
+    if linked:
+        rows = [
+            [InlineKeyboardButton(
+                text="Отвязать аккаунт",
+                callback_data="account_unlink",
+                icon_custom_emoji_id=eid("LOCK"),
+            )],
+        ]
+    else:
+        rows = [
+            [InlineKeyboardButton(
+                text="Привязать аккаунт",
+                callback_data="account_link",
+                icon_custom_emoji_id=eid("LINK"),
+            )],
+        ]
+    rows.append([InlineKeyboardButton(
+        text="Назад в профиль",
+        callback_data="back_to_profile",
+        icon_custom_emoji_id=eid("BACK"),
+    )])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 back_to_menu_kb = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="Назад в профиль", callback_data="back_to_profile", icon_custom_emoji_id=eid("BACK"))],
@@ -137,7 +191,16 @@ def groups_list_kb(groups: list) -> InlineKeyboardMarkup:
             callback_data=f"grp_view_{g.id}",
             icon_custom_emoji_id=eid("GROUPS"),
         )])
-    rows.append([InlineKeyboardButton(text="Добавить группу", callback_data="grp_add", icon_custom_emoji_id=eid("ADD"))])
+    rows.append([InlineKeyboardButton(
+        text="➕ Добавить группу",
+        callback_data="grp_add",
+        icon_custom_emoji_id=eid("ADD"),
+    )])
+    rows.append([InlineKeyboardButton(
+        text="Как добавить группу?",
+        callback_data="grp_help",
+        icon_custom_emoji_id=eid("SUPPORT"),
+    )])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 

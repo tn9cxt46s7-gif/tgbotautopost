@@ -25,6 +25,12 @@ class UserSettings(StatesGroup):
     default_interval = State()
 
 
+class AccountLink(StatesGroup):
+    phone = State()
+    code = State()
+    password = State()
+
+
 class SupportChat(StatesGroup):
     chatting = State()
 

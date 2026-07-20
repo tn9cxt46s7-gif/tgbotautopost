@@ -5,6 +5,12 @@ load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 
+# my.telegram.org → API development tools (нужно для постинга от аккаунта клиента)
+TG_API_ID = int(os.getenv("TG_API_ID", "0") or "0")
+TG_API_HASH = os.getenv("TG_API_HASH", "")
+# Ключ шифрования сессий; если пусто — берём из BOT_TOKEN
+SESSION_SECRET = os.getenv("SESSION_SECRET") or BOT_TOKEN or "change-me"
+
 
 def _normalize_db_url(url: str) -> str:
     """Make common Postgres URLs work with async SQLAlchemy."""

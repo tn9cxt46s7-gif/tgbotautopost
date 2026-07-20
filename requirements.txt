@@ -9,3 +9,5 @@ sqlalchemy
 aiosqlite
 asyncpg
 apscheduler
+telethon
+cryptography

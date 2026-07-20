@@ -4,9 +4,10 @@ from aiogram.filters import CommandStart, CommandObject
 from aiogram.fsm.context import FSMContext
 
 from keyboards import main_menu, profile_menu, back_to_menu_kb, settings_kb, cancel_kb
-from database import get_or_create_user, get_user, count_referrals, update_user_settings
+from database import get_or_create_user, get_user, count_referrals, update_user_settings, user_has_tg_account
 from utils.emoji import tg_emoji
 from utils.subscription import has_active_subscription
+from services.user_client import mask_phone
 from states import UserSettings
 
 router = Router()
@@ -33,11 +34,12 @@ async def cmd_start(message: Message, command: CommandObject, state: FSMContext)
 
     await message.answer(
         f"{tg_emoji('WAVE')} <b>Добро пожаловать в бота автопостинга!</b>\n\n"
-        f"{tg_emoji('AUTO')} Автопубликация объявлений в барахолки\n"
+        f"{tg_emoji('AUTO')} Автопубликация в барахолки <b>от твоего аккаунта</b>\n"
+        f"{tg_emoji('USER')} Привязка Telegram в «Мой аккаунт»\n"
         f"{tg_emoji('SUB')} Гибкая подписка\n"
         f"{tg_emoji('REF')} Реферальная программа\n"
         f"{tg_emoji('SUPPORT')} Чат поддержки\n\n"
-        "Выбирай раздел в меню ниже 👇",
+        "Сначала привяжи аккаунт → добавь группы → объявления → автопостинг 👇",
         reply_markup=main_menu,
     )
 
@@ -54,11 +56,16 @@ async def build_profile_text(telegram_id: int, username: str | None) -> str:
 
     refs = await count_referrals(telegram_id)
     ap = "вкл" if user.autopost_enabled else "выкл"
+    if user_has_tg_account(user):
+        acc = f"{tg_emoji('OK')} {user.tg_account_name or 'привязан'} ({mask_phone(user.tg_phone)})"
+    else:
+        acc = f"{tg_emoji('WARN')} не привязан"
 
     return (
         f"{tg_emoji('PROFILE')} <b>Твой профиль</b>\n\n"
         f"{tg_emoji('ID')} ID: <code>{telegram_id}</code>\n"
         f"{tg_emoji('USER')} Username: @{username or '—'}\n"
+        f"{tg_emoji('LINK')} Аккаунт: {acc}\n"
         f"{tg_emoji('SUB')} Подписка: {sub_status}\n"
         f"{tg_emoji('AUTO')} Автопостинг: <b>{ap}</b>\n"
         f"{tg_emoji('PEOPLE')} Приглашено друзей: <b>{refs}</b>\n"

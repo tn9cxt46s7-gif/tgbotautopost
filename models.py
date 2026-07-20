@@ -19,6 +19,10 @@ class User(Base):
     default_interval = Column(Integer, default=60)
     quiet_hours_start = Column(Integer, default=0)
     quiet_hours_end = Column(Integer, default=6)
+    # Encrypted Telethon StringSession — posts go from the client's account
+    tg_session = Column(Text, default=None)
+    tg_phone = Column(String, default=None)
+    tg_account_name = Column(String, default=None)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
