@@ -103,8 +103,11 @@ async def ap_now(callback: CallbackQuery, bot: Bot):
             "no_groups": "Нет групп — добавь в «Мои группы»",
             "no_user": "Ошибка профиля",
             "autopost_off": "Сначала включи автопостинг",
+            "send_failed": "Не смог отправить в личку. Напиши боту /start и попробуй ещё раз.",
         }.get(result.get("reason") or "", "Не удалось отправить — проверь объявления и группы")
-        await bot.send_message(callback.from_user.id, f"{tg_emoji('WARN')} {reason}")
+        err = result.get("error")
+        extra = f"\n<code>{err[:200]}</code>" if err else ""
+        await bot.send_message(callback.from_user.id, f"{tg_emoji('WARN')} {reason}{extra}")
 
 
 @router.callback_query(F.data == "ap_stop")
