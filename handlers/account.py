@@ -22,9 +22,6 @@ from services.user_client import (
     wait_qr_login,
     cancel_qr_login,
     finish_password_login,
-    start_phone_login,
-    complete_phone_login,
-    normalize_phone,
 )
 
 router = Router()
@@ -180,22 +177,13 @@ async def account_link_qr(callback: CallbackQuery, state: FSMContext, bot: Bot):
 
 
 @router.callback_query(F.data == "account_link_phone")
-async def account_link_phone(callback: CallbackQuery, state: FSMContext):
-    """Fallback — clearly secondary, less scammy framing."""
-    if not api_configured():
-        await callback.answer(_api_missing_alert(callback.from_user.id), show_alert=True)
-        return
-    await cancel_qr_login(callback.from_user.id)
-    await state.set_state(AccountLink.phone)
-    await callback.message.answer(
-        f"{tg_emoji('WARN')} <b>Запасной способ</b>\n\n"
-        "Лучше подключаться через QR (кнопка выше) — без номера и кода.\n\n"
-        "Если QR недоступен, пришли номер в формате <code>+79001234567</code>.\n"
-        "Код придёт <b>в официальном Telegram</b> — его можно ввести сюда.\n"
-        "Сессия шифруется; отключить можно в любой момент.",
-        reply_markup=cancel_kb,
+async def account_link_phone_removed(callback: CallbackQuery, state: FSMContext):
+    """Old phone-login button — disabled (looks like phishing)."""
+    await state.clear()
+    await callback.answer(
+        "Вход по номеру отключён. Используй QR или режим без входа.",
+        show_alert=True,
     )
-    await callback.answer()
 
 
 @router.message(AccountLink.qr_wait)
@@ -213,70 +201,15 @@ async def account_qr_cancel(message: Message, state: FSMContext):
 
 
 @router.message(AccountLink.phone)
-async def account_phone(message: Message, state: FSMContext):
-    if message.text == "Отмена":
-        await state.clear()
-        await message.answer("Отменено.", reply_markup=main_menu)
-        return
-    try:
-        pending, phone_code_hash = await start_phone_login(message.text)
-        phone = normalize_phone(message.text)
-    except AccountError as e:
-        await message.answer(f"{tg_emoji('WARN')} {e}")
-        return
-    except Exception as e:
-        await message.answer(f"{tg_emoji('WARN')} Не удалось отправить код: {e}")
-        return
-
-    await state.update_data(
-        phone=phone,
-        phone_code_hash=phone_code_hash,
-        pending_session=pending,
-        link_via="phone",
-    )
-    await state.set_state(AccountLink.code)
-    await message.answer(
-        f"{tg_emoji('OK')} Код отправлен в Telegram на {mask_phone(phone)}.\n"
-        "Пришли его сюда:",
-        reply_markup=cancel_kb,
-    )
-
-
 @router.message(AccountLink.code)
-async def account_code(message: Message, state: FSMContext):
-    if message.text == "Отмена":
-        await state.clear()
-        await message.answer("Отменено.", reply_markup=main_menu)
-        return
-
-    data = await state.get_data()
-    try:
-        raw_session, name = await complete_phone_login(
-            phone=data["phone"],
-            code=message.text or "",
-            phone_code_hash=data["phone_code_hash"],
-            pending_session=data["pending_session"],
-        )
-    except Need2FA as e:
-        await state.update_data(pending_session=e.pending_session)
-        await state.set_state(AccountLink.password)
-        await message.answer(
-            f"{tg_emoji('LOCK')} Нужен облачный пароль (2FA).\n"
-            "Введи его один раз. Пароль не сохраняется.",
-            reply_markup=cancel_kb,
-        )
-        return
-    except AccountError as e:
-        await message.answer(f"{tg_emoji('WARN')} {e}")
-        return
-    except Exception as e:
-        await message.answer(f"{tg_emoji('WARN')} Ошибка входа: {e}")
-        return
-
-    await _save_linked(message.from_user.id, raw_session, name, phone=data.get("phone"))
+async def account_phone_flow_cancelled(message: Message, state: FSMContext):
+    """Kill any leftover phone/code FSM from old builds."""
     await state.clear()
     await message.answer(
-        f"{tg_emoji('OK')} Публикация от <b>{name}</b> подключена.",
+        f"{tg_emoji('OK')} Вход по номеру больше не нужен.\n"
+        "Просто добавь группы и включи автопостинг — "
+        "бот пришлёт готовый пост, перешлёшь в барахолку.\n\n"
+        "Напиши /start",
         reply_markup=main_menu,
     )
 
@@ -304,7 +237,7 @@ async def account_password(message: Message, state: FSMContext):
     await _save_linked(message.from_user.id, raw_session, name, phone=data.get("phone"))
     await state.clear()
     await message.answer(
-        f"{tg_emoji('OK')} Публикация от <b>{name}</b> подключена.",
+        f"{tg_emoji('OK')} Полный автопост от <b>{name}</b> подключён.",
         reply_markup=main_menu,
     )
 
