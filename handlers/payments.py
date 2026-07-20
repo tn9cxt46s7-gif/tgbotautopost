@@ -3,25 +3,27 @@ from aiogram.types import Message, CallbackQuery, PreCheckoutQuery, LabeledPrice
 
 from keyboards import subscription_plans_kb, payment_method_kb
 from database import extend_subscription, save_payment
+from utils.emoji import tg_emoji
+from config import REFERRAL_BONUS_DAYS
 
 router = Router()
 
 PLANS = {
-    "week":    {"title": "Неделя",   "emoji": "🔹", "days": 7,  "stars": 150},
-    "month":   {"title": "Месяц",    "emoji": "💠", "days": 30, "stars": 450},
-    "quarter": {"title": "3 месяца", "emoji": "💎", "days": 90, "stars": 1100},
+    "week": {"title": "Неделя", "days": 7, "stars": 150},
+    "month": {"title": "Месяц", "days": 30, "stars": 450},
+    "quarter": {"title": "3 месяца", "days": 90, "stars": 1100},
 }
 
 
 def price_list_text() -> str:
-    lines = ["💎 <b>Прайс-лист подписки</b>\n"]
+    lines = [f"{tg_emoji('SUB')} <b>Прайс-лист подписки</b>\n"]
     for plan in PLANS.values():
-        lines.append(f"{plan['emoji']} {plan['title']} — <b>{plan['stars']} ⭐</b>")
+        lines.append(f"{tg_emoji('STAR')} {plan['title']} — <b>{plan['stars']} ⭐</b>")
     lines.append("\nВыбери план ниже 👇")
     return "\n".join(lines)
 
 
-@router.message(F.text == "💎 Подписка")
+@router.message(F.text == "Подписка")
 async def show_plans_msg(message: Message):
     await message.answer(price_list_text(), reply_markup=subscription_plans_kb(PLANS))
 
@@ -41,9 +43,9 @@ async def choose_payment_method(callback: CallbackQuery):
         return
 
     await callback.message.edit_text(
-        f"{plan['emoji']} <b>{plan['title']}</b> — {plan['stars']} ⭐\n\n"
+        f"{tg_emoji('SUB')} <b>{plan['title']}</b> — {plan['stars']} ⭐\n\n"
         "Выбери способ оплаты:",
-        reply_markup=payment_method_kb(plan_key)
+        reply_markup=payment_method_kb(plan_key),
     )
     await callback.answer()
 
@@ -70,16 +72,16 @@ async def pay_with_stars(callback: CallbackQuery):
 @router.callback_query(F.data.startswith("pay_card_"))
 async def pay_with_card(callback: CallbackQuery):
     await callback.answer(
-        "💳 Оплата картой скоро будет подключена. Пока напиши админу для ручной оплаты.",
-        show_alert=True
+        "Оплата картой скоро будет подключена. Напиши админу через «Поддержка».",
+        show_alert=True,
     )
 
 
 @router.callback_query(F.data.startswith("pay_crypto_"))
 async def pay_with_crypto(callback: CallbackQuery):
     await callback.answer(
-        "₿ Оплата криптовалютой скоро будет подключена. Пока напиши админу для ручной оплаты.",
-        show_alert=True
+        "Оплата криптой скоро будет подключена. Напиши админу через «Поддержка».",
+        show_alert=True,
     )
 
 
@@ -95,7 +97,7 @@ async def process_successful_payment(message: Message):
     plan = PLANS.get(plan_key)
 
     if not plan:
-        await message.answer("Оплата прошла, но план не распознан. Напиши админу — разберёмся.")
+        await message.answer("Оплата прошла, но план не распознан. Напиши в поддержку.")
         return
 
     stars_paid = message.successful_payment.total_amount
@@ -103,19 +105,19 @@ async def process_successful_payment(message: Message):
     user = await extend_subscription(message.from_user.id, plan_key, plan["days"])
 
     await message.answer(
-        f"✅ Оплата на {stars_paid} ⭐ прошла успешно!\n"
+        f"{tg_emoji('OK')} Оплата на {stars_paid} ⭐ прошла успешно!\n"
         f"Подписка «{plan['title']}» активна до "
         f"<b>{user.subscription_end.strftime('%d.%m.%Y')}</b>\n\n"
-        "Спасибо, что пользуешься ботом! 🚀"
+        f"{tg_emoji('AUTO')} Можно запускать автопостинг!"
     )
 
-    if user.referrer_id:
+    if user and user.referrer_id:
         try:
             await message.bot.send_message(
                 user.referrer_id,
-                "🎉 Твой реферал оплатил подписку!\n"
-                "В благодарность тебе начислено <b>+3 дня</b> подписки."
+                f"{tg_emoji('FIRE')} Твой реферал оплатил подписку!\n"
+                f"Начислено <b>+{REFERRAL_BONUS_DAYS} дня</b> подписки.",
             )
-            await extend_subscription(user.referrer_id, "bonus", 3)
+            await extend_subscription(user.referrer_id, "bonus", REFERRAL_BONUS_DAYS)
         except Exception:
             pass

@@ -3,29 +3,45 @@ import logging
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from dotenv import load_dotenv
-import os
+from aiogram.fsm.storage.memory import MemoryStorage
 
+from config import BOT_TOKEN
 from handlers.user import router as user_router
+from handlers.ads import router as ads_router
+from handlers.groups import router as groups_router
+from handlers.autopost import router as autopost_router
+from handlers.support import router as support_router
 from handlers.admin import router as admin_router
 from handlers.payments import router as payments_router
 from database import init_db
+from services.scheduler import start_scheduler, stop_scheduler
 
-load_dotenv()
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-bot = Bot(token=os.getenv("BOT_TOKEN"), default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-dp = Dispatcher()
+bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+dp = Dispatcher(storage=MemoryStorage())
 
 dp.include_router(user_router)
-dp.include_router(admin_router)
+dp.include_router(ads_router)
+dp.include_router(groups_router)
+dp.include_router(autopost_router)
+dp.include_router(support_router)
 dp.include_router(payments_router)
+dp.include_router(admin_router)
 
 
 async def main():
+    if not BOT_TOKEN:
+        raise RuntimeError("BOT_TOKEN is not set")
     await init_db()
     await bot.delete_webhook(drop_pending_updates=True)
-    await dp.start_polling(bot)
+    start_scheduler(bot)
+    logger.info("Bot started (polling)")
+    try:
+        await dp.start_polling(bot)
+    finally:
+        stop_scheduler()
 
 
 if __name__ == "__main__":

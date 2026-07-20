@@ -1,4 +1,6 @@
-from sqlalchemy import Column, Integer, BigInteger, String, DateTime, Boolean, ForeignKey
+from sqlalchemy import (
+    Column, Integer, BigInteger, String, DateTime, Boolean, ForeignKey, Text
+)
 from datetime import datetime
 from database import Base
 
@@ -11,23 +13,45 @@ class User(Base):
     referrer_id = Column(BigInteger, default=None)
     subscription_end = Column(DateTime, default=None)
     plan = Column(String, default=None)
+    is_blocked = Column(Boolean, default=False)
+    is_admin = Column(Boolean, default=False)
+    autopost_enabled = Column(Boolean, default=True)
+    default_interval = Column(Integer, default=60)
+    quiet_hours_start = Column(Integer, default=0)
+    quiet_hours_end = Column(Integer, default=6)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
 class Ad(Base):
     __tablename__ = "ads"
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    text = Column(String, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    title = Column(String, default=None)
+    text = Column(Text, nullable=False)
+    price = Column(String, default=None)
+    photo_file_id = Column(String, default=None)
+    status = Column(String, default="draft")  # draft / active / paused / sold
     interval_minutes = Column(Integer, default=60)
-    active = Column(Boolean, default=True)
+    last_posted_at = Column(DateTime, default=None)
+    variant_seed = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 
 class TargetGroup(Base):
     __tablename__ = "target_groups"
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     chat_id = Column(BigInteger, nullable=False)
+    title = Column(String, default=None)
+    min_interval_minutes = Column(Integer, default=60)
+    jitter_seconds = Column(Integer, default=180)
+    quiet_hours_start = Column(Integer, default=0)
+    quiet_hours_end = Column(Integer, default=6)
+    fail_count = Column(Integer, default=0)
+    cooldown_until = Column(DateTime, default=None)
+    last_post_at = Column(DateTime, default=None)
+    active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 
 class Payment(Base):
@@ -38,3 +62,24 @@ class Payment(Base):
     amount_stars = Column(Integer, nullable=False)
     method = Column(String, default="stars")
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class PostLog(Base):
+    __tablename__ = "post_logs"
+    id = Column(Integer, primary_key=True)
+    ad_id = Column(Integer, ForeignKey("ads.id"), nullable=False)
+    group_id = Column(Integer, ForeignKey("target_groups.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    status = Column(String, nullable=False)  # ok / error / skipped
+    error = Column(Text, default=None)
+    posted_at = Column(DateTime, default=datetime.utcnow)
+
+
+class SupportTicket(Base):
+    __tablename__ = "support_tickets"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    telegram_id = Column(BigInteger, nullable=False)
+    status = Column(String, default="open")  # open / closed
+    created_at = Column(DateTime, default=datetime.utcnow)
+    closed_at = Column(DateTime, default=None)
