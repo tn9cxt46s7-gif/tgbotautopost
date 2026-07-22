@@ -17,6 +17,11 @@ async def _tick():
         await run_posting_cycle(_bot)
     except Exception:
         logger.exception("Posting cycle failed")
+    try:
+        from services.reminders import run_subscription_reminders
+        await run_subscription_reminders(_bot)
+    except Exception:
+        logger.exception("Reminders failed")
 
 
 def start_scheduler(bot):

@@ -26,10 +26,56 @@ def format_group(g) -> str:
         f"{tg_emoji('GROUPS')} <b>{g.title or g.chat_id}</b>\n"
         f"chat_id: <code>{g.chat_id}</code>\n"
         f"Статус: <b>{status}</b>\n"
+        f"Посты: от твоего аккаунта\n"
         f"Интервал: {g.min_interval_minutes} мин (±{g.jitter_seconds} сек)\n"
         f"Тихие часы: {g.quiet_hours_start:02d}–{g.quiet_hours_end:02d} UTC\n"
         f"Ошибок подряд: {g.fail_count}{cooldown}"
     )
+
+
+async def _add_group_for_user(
+    bot: Bot,
+    telegram_id: int,
+    username: str | None,
+    chat_id: int,
+    title: str | None,
+):
+    """Save group by chat_id. Posts go from client's account — bot need not join."""
+    user = await get_or_create_user(telegram_id, username)
+    if not has_active_subscription(user):
+        return False, "Нужна активная подписка."
+    limits = effective_limits(user)
+    count = await count_user_groups(user.id)
+    if count >= limits["groups"]:
+        return False, f"Лимит групп: {limits['groups']}."
+
+    if not title:
+        try:
+            chat = await bot.get_chat(chat_id)
+            title = chat.title or str(chat_id)
+        except TelegramAPIError:
+            title = title or str(chat_id)
+
+    # Safer default interval for flea markets
+    interval = max(user.default_interval or 90, 60)
+
+    group = await create_group(
+        user_id=user.id,
+        chat_id=chat_id,
+        title=title or str(chat_id),
+        min_interval_minutes=interval,
+        quiet_hours_start=user.quiet_hours_start or 0,
+        quiet_hours_end=user.quiet_hours_end or 7,
+        bot_can_post=False,
+    )
+    if group is None:
+        return False, "Эта группа уже добавлена."
+
+    hint = (
+        "\n\nПосты пойдут <b>от твоего аккаунта</b> (бот в группу не нужен).\n"
+        "Подключи аккаунт в «Мой аккаунт». Сам состои в барахолке и читай её правила."
+    )
+    return True, f"{tg_emoji('OK')} Группа добавлена!\n\n{format_group(group)}{hint}"
 
 
 async def show_groups(target, telegram_id: int, edit: bool = False):
@@ -41,7 +87,10 @@ async def show_groups(target, telegram_id: int, edit: bool = False):
     header = (
         f"{tg_emoji('GROUPS')} <b>Мои группы</b>\n"
         f"Использовано: {len(groups)}/{limits['groups']}\n\n"
-        "Нажми «➕ Добавить группу» и выбери барахолку из меню Telegram."
+        "Нажми «➕ Добавить группу» и выбери барахолку Латвии "
+        "(Rīga, Daugavpils, marketplace LV и т.п.).\n"
+        "Бот админом <b>не становится</b> — посты от твоего аккаунта "
+        "после «Мой аккаунт»."
     )
     if not groups:
         text = header + f"\n\n{tg_emoji('EMPTY')} Группы ещё не добавлены."
@@ -52,43 +101,6 @@ async def show_groups(target, telegram_id: int, edit: bool = False):
         await target.edit_text(text, reply_markup=kb)
     else:
         await target.answer(text, reply_markup=kb)
-
-
-async def _add_group_for_user(
-    bot: Bot,
-    telegram_id: int,
-    username: str | None,
-    chat_id: int,
-    title: str | None,
-):
-    """Save group by chat_id. Bot membership is NOT required."""
-    user = await get_or_create_user(telegram_id, username)
-    if not has_active_subscription(user):
-        return False, "Нужна активная подписка."
-    limits = effective_limits(user)
-    count = await count_user_groups(user.id)
-    if count >= limits["groups"]:
-        return False, f"Лимит групп: {limits['groups']}."
-
-    # Soft-fetch title if bot already knows the chat; never block on membership
-    if not title:
-        try:
-            chat = await bot.get_chat(chat_id)
-            title = chat.title or str(chat_id)
-        except TelegramAPIError:
-            title = title or str(chat_id)
-
-    group = await create_group(
-        user_id=user.id,
-        chat_id=chat_id,
-        title=title or str(chat_id),
-        min_interval_minutes=user.default_interval or 60,
-        quiet_hours_start=user.quiet_hours_start or 0,
-        quiet_hours_end=user.quiet_hours_end or 6,
-    )
-    if group is None:
-        return False, "Эта группа уже добавлена."
-    return True, f"{tg_emoji('OK')} Группа добавлена!\n\n{format_group(group)}"
 
 
 @router.message(F.text == "Мои группы")
@@ -108,8 +120,10 @@ async def grp_help(callback: CallbackQuery):
         f"{tg_emoji('SUPPORT')} <b>Как добавить группу</b>\n\n"
         "1. «Мои группы» → «➕ Добавить группу»\n"
         "2. Нажми «Выбрать группу»\n"
-        "3. В меню Telegram тапни нужную барахолку\n\n"
-        "Бот в группу добавлять не нужно.",
+        "3. Тапни барахолку в меню Telegram\n\n"
+        "Бот в группу <b>не добавляется</b>.\n"
+        "Посты идут от твоего аккаунта после «Мой аккаунт».\n"
+        "Ты должен быть участником барахолки и соблюдать её правила.",
     )
     await callback.answer()
 
@@ -230,7 +244,7 @@ async def grp_interval_start(callback: CallbackQuery, state: FSMContext):
     await state.set_state(GroupSettings.interval)
     await state.update_data(group_id=gid)
     await callback.message.answer(
-        f"{tg_emoji('CLOCK')} Введи минимальный интервал в минутах (30–1440):",
+        f"{tg_emoji('CLOCK')} Введи минимальный интервал в минутах (60–1440):",
         reply_markup=cancel_kb,
     )
     await callback.answer()
@@ -246,8 +260,8 @@ async def grp_interval_save(message: Message, state: FSMContext):
         await message.answer("Нужно число.")
         return
     minutes = int(message.text)
-    if minutes < 30 or minutes > 1440:
-        await message.answer("Диапазон 30–1440.")
+    if minutes < 60 or minutes > 1440:
+        await message.answer("Для защиты от бана минимум 60 мин (до 1440).")
         return
     data = await state.get_data()
     gid = data["group_id"]

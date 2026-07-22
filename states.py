@@ -49,6 +49,10 @@ class AdminFindUser(StatesGroup):
     query = State()
 
 
+class PromoApply(StatesGroup):
+    waiting = State()
+
+
 class AdminBroadcast(StatesGroup):
     message = State()
     confirm = State()

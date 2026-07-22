@@ -1,84 +1,94 @@
 # Telegram Autopost Bot
 
-Бот для автопубликации объявлений в группы-барахолки с антибан-алгоритмом, подпиской (Telegram Stars), админкой и чатом поддержки.
+Бот для автопубликации объявлений в группы и барахолки: от бота (если он админ) или от аккаунта клиента (Telethon), с подпиской (Telegram Stars), админкой и чатом поддержки.
 
 ## Возможности
 
-- Постинг **от аккаунта клиента** (Telethon) — бота в барахолки добавлять не нужно
-- Привязка Telegram: телефон → код → 2FA
-- Создание объявлений на продажу (текст / фото / цена)
+- Постинг **от аккаунта клиента** (Telethon) — бот в барахолки не заходит и админом не становится
+- Привязка Telegram: QR (VPS) или телефон + код (Vercel)
+- Создание объявлений (текст / фото / цена) с антиспам-проверкой
 - Выбор групп из меню Telegram
-- Автопостинг с per-group интервалом, джиттером, тихими часами и вариациями текста
+- Автопостинг с интервалом, дневными лимитами, тихими часами и вариациями текста
+- Кнопка **«Запостить сейчас»** с мягким антибан-полом
 - Подписка через Telegram Stars + рефералка (+3 дня)
-- Чат поддержки (юзер ↔ админ)
-- Админ-панель `/admin`: статистика, юзеры, подписки, объявления, группы, рассылка, тикеты
+- Чат поддержки и админ-панель `/admin`
 
-## Деплой на Vercel (бесплатно, с ограничениями)
+## Деплой на Vercel (webhook + cron)
 
-Бот **может отвечать** на кнопки через webhook. Автопостинг на бесплатном Vercel слабый (база в `/tmp` сбрасывается, cron раз в сутки).
+### 1. База данных (обязательно для продакшена)
 
-1. Vercel → Import GitHub repo `tgbotautopost`
-2. **Settings → Environment Variables** добавь:
+SQLite в `/tmp` на Vercel **сбрасывается**. Подключи Postgres:
+
+1. [Neon](https://neon.tech) / Supabase / Vercel Postgres → создай БД
+2. Скопируй connection string
+3. В Vercel → Settings → Environment Variables:
 
 | Key | Value |
 |-----|--------|
 | `BOT_TOKEN` | токен BotFather |
 | `ADMIN_IDS` | твой Telegram ID |
+| `DB_URL` или `POSTGRES_URL` | `postgresql://...` (нормализуется в asyncpg) |
+| `TG_API_ID` | с [my.telegram.org](https://my.telegram.org) |
+| `TG_API_HASH` | там же |
+| `CRON_SECRET` | случайная строка |
 
-3. Redeploy (Deployments → Redeploy)
-4. Открой в браузере: `https://ТВОЙ-ПРОЕКТ.vercel.app/setup-webhook`
-5. Должно показать `"ok": true`
-6. В Telegram напиши боту `/start`
+### 2. Deploy
 
-Если не отвечает — открой `/setup-webhook` ещё раз и проверь, что `BOT_TOKEN` точно в Environment Variables (Production).
+1. Vercel → Import GitHub repo `tgbotautopost`
+2. Redeploy после добавления env
+3. Открой: `https://ТВОЙ-ПРОЕКТ.vercel.app/setup-webhook` → `"ok": true`
+4. Проверка: `/health` — `persistent_db: true`, `tg_api: true`
+5. В Telegram: `/start`
 
+### 3. Автопостинг по расписанию
 
-1. Зайди на [render.com](https://render.com) → **New** → **Background Worker**
-2. Подключи GitHub-репозиторий `tgbotautopost`
-3. Настройки:
-   - **Runtime:** Python
-   - **Build Command:** `pip install -r requirements.txt`
-   - **Start Command:** `python main.py`
-4. **Environment** (Environment Variables):
-
-| Key | Value |
-|-----|-------|
-| `BOT_TOKEN` | токен от BotFather |
-| `ADMIN_IDS` | твой Telegram ID |
-| `DB_URL` | `sqlite+aiosqlite:///bot.db` |
-| `PYTHON_VERSION` | `3.11.9` |
-
-5. **Create Worker** → дождись статуса **Live**
-6. Напиши боту `/start`
-
-> Важно: выбирай **Background Worker**, не Web Service.  
-> Web Service на Render ждёт HTTP-порт — для polling-бота это ломает деплой.
-
-Если раньше ставил webhook на Vercel — не страшно: при старте бот сам снимает webhook.
-
-### База данных
-
-SQLite на бесплатном Render может сброситься при редеплое.  
-Для серьёзной работы: **New → PostgreSQL** в Render, скопируй Internal Database URL и в `DB_URL` поставь:
+Vercel Hobby cron — редко (в конфиге hourly; на Hobby может быть реже).  
+Для реальных интервалов поставь **внешний cron** (cron-job.org / EasyCron) каждые 5–15 минут:
 
 ```
-postgresql+asyncpg://user:pass@host/dbname
+GET https://ТВОЙ-ПРОЕКТ.vercel.app/cron?secret=ТВОЙ_CRON_SECRET
 ```
 
-(замени `postgres://` в начале на `postgresql+asyncpg://`)
+Либо жми в боте **«Запостить сейчас»**.
 
+### 4. Как пользоваться на Vercel
+
+1. Подписка
+2. **Мой аккаунт → Подключить по номеру** (посты только от клиента)
+3. **Мои группы** → барахолки (бот в них не нужен)
+4. Объявление → запустить
+5. Автопостинг → «Запостить сейчас» / включить + cron
+
+Клиент должен быть участником барахолки. Бот админом не становится.
+
+---
+
+## Деплой на Render (always-on, лучший автопост)
+
+1. [render.com](https://render.com) → **New** → **Background Worker**
+2. Подключи GitHub `tgbotautopost`
+3. **Build:** `pip install -r requirements.txt`  
+   **Start:** `python main.py`
+4. Env: `BOT_TOKEN`, `ADMIN_IDS`, `DB_URL`, `TG_API_ID`, `TG_API_HASH`, `PYTHON_VERSION=3.11.9`
+5. Create Worker → Live → `/start`
+
+> Background Worker, не Web Service.  
+> При старте бот сам снимает webhook (если раньше был Vercel).
+
+Для Postgres на Render: Internal Database URL → в `DB_URL` с префиксом `postgresql+asyncpg://`.
+
+---
+
+## Локальный запуск
 
 ```bash
 python -m venv .venv
-# Windows:
-.venv\Scripts\activate
-# Linux/macOS:
-# source .venv/bin/activate
-
+# Windows: .venv\Scripts\activate
+# Linux/macOS: source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Создай файл `.env`:
+Файл `.env` (см. `.env.example`):
 
 ```env
 BOT_TOKEN=123456:ABC...
@@ -88,74 +98,69 @@ TG_API_ID=12345678
 TG_API_HASH=your_api_hash_here
 ```
 
-`TG_API_ID` / `TG_API_HASH` возьми на [my.telegram.org](https://my.telegram.org) → API development tools.  
-Без них привязка аккаунта и автопостинг не работают.
-
-Для PostgreSQL:
-
-```env
-DB_URL=postgresql+asyncpg://user:pass@host:5432/dbname
-```
-
-Запуск (polling + планировщик автопостинга):
-
 ```bash
 python main.py
 ```
 
-> Автопостинг работает только при always-on процессе (`main.py`).  
-> Vercel webhook (`api/index.py`) принимает апдейты, но не держит APScheduler.
-
-## Как пользоваться
-
-1. Подписка.
-2. **Мой аккаунт → Подключить через QR** (Настройки → Устройства на телефоне).
-3. Мои группы → выбрать барахолки.
-4. Объявление → запустить.
-5. Автопостинг → включить / «Запостить сейчас в группы».
-
-Посты идут **от аккаунта клиента прямо в группы**. Без QR — нельзя (барахолки не пускают ботов).
-
-> Рабочий автопост: `python main.py` на ПК/VPS с `TG_API_ID` + `TG_API_HASH`.  
-> Vercel годится только для меню, не для продажи автопостинга.
+На `main.py` работают QR-логин и планировщик APScheduler.
 
 ## Админка
 
-Команда `/admin` (только ID из `ADMIN_IDS`).
+`/admin` — только ID из `ADMIN_IDS`.
 
-## Антибан (кратко)
+## Антибан (снижение риска, не гарантия)
 
-На каждую группу:
+Посты всегда от аккаунта клиента. 100% защиты от бана в барахолке нет.
 
-- минимальный интервал + случайный jitter
-- тихие часы (UTC)
+Встроено:
+
+- минимальный интервал 60+ мин (ручной пост — мягкий пол 45 мин)
+- лимит постов в сутки на группу и на пользователя
+- тихие часы, джиттер, перемешивание групп
 - вариации текста объявления
-- пауза 30–120 сек между группами
-- FloodWait → cooldown
-- 3 ошибки подряд → группа отключается + уведомление юзеру
+- проверка текста на спам-паттерны при создании
+- FloodWait → длинный cooldown
+- 2 ошибки / запрет писать → группа отключается + уведомление
+- на Vercel: 1 группа за тик cron (безопаснее + укладывается в timeout)
+
+Клиент сам обязан соблюдать правила каждой барахолки.
 
 ## Структура
 
 ```
-config.py          # env, лимиты планов
-models.py          # User, Ad, TargetGroup, Payment, PostLog, SupportTicket
+config.py          # env, лимиты, IS_VERCEL
+models.py          # User, Ad, TargetGroup (+ bot_can_post), …
 database.py        # async SQLAlchemy CRUD
-keyboards.py       # reply/inline + premium emoji
-states.py          # FSM
-utils/emoji.py     # именованные premium emoji
-utils/subscription.py
-handlers/          # user, account, ads, groups, autopost, support, admin, payments
-services/user_client.py  # Telethon: логин + пост от аккаунта
-services/poster.py # антибан + отправка через user session
-services/scheduler.py
-main.py            # polling entrypoint (рекомендуется)
-api/index.py       # Vercel webhook (без надёжного автопостинга)
+handlers/          # user, account, ads, groups, autopost, …
+services/user_client.py  # Telethon
+services/poster.py       # бот + user account
+services/scheduler.py    # только main.py
+main.py            # polling (рекомендуется для полного автопоста)
+api/index.py       # Vercel webhook + /cron + /health
 ```
+
+## Оплата
+
+Подробно: [`docs/PAYMENT_SETUP.md`](docs/PAYMENT_SETUP.md)
+
+- **Telegram Stars** — авто
+- **CryptoBot** — авто (`CRYPTO_BOT_TOKEN` + webhook `/cryptobot-webhook`)
+- **Карта / крипта вручную** — заявка → админ подтверждает
+- **Промокоды:** START20 (−20%), SALE15, VIP30
+
+Маркетинг: [`docs/MARKETING.md`](docs/MARKETING.md) · креатив: [`docs/promo-creative.png`](docs/promo-creative.png)
+
+## Поддержка
+
+Кнопка «Поддержка» → `@eb_support` (env `SUPPORT_USERNAME`) + тикет в боте.
 
 ## Планы и лимиты
 
-| План    | Дни | Stars | Объявлений | Групп |
-|---------|-----|-------|------------|-------|
-| week    | 7   | 150   | 1          | 3     |
-| month   | 30  | 450   | 5          | 15    |
-| quarter | 90  | 1100  | 20         | 50    |
+| План    | Дни | Stars | ₽ (default) | Объявлений | Групп |
+|---------|-----|-------|-------------|------------|-------|
+| trial   | 1   | —     | —           | 1          | 2     |
+| week    | 7   | 150   | 299         | 1          | 3     |
+| month   | 30  | 450   | 799         | 5          | 15    |
+| quarter | 90  | 1100  | 1990        | 20         | 50    |
+
+Идеи следующих обновлений: см. `ROADMAP.md`.
