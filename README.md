@@ -141,10 +141,14 @@ api/index.py       # Vercel webhook + /cron + /health
 
 ## Оплата
 
-- **Telegram Stars** — мгновенно
-- **Карта / крипта** — заявка → «Я оплатил» → админ подтверждает в боте
-- Реквизиты: `PAYMENT_CARD_DETAILS`, `PAYMENT_CRYPTO_DETAILS`
-- Цены ₽: `PAYMENT_RUB_WEEK` / `MONTH` / `QUARTER`
+Подробно: [`docs/PAYMENT_SETUP.md`](docs/PAYMENT_SETUP.md)
+
+- **Telegram Stars** — авто
+- **CryptoBot** — авто (`CRYPTO_BOT_TOKEN` + webhook `/cryptobot-webhook`)
+- **Карта / крипта вручную** — заявка → админ подтверждает
+- **Промокоды:** START20 (−20%), SALE15, VIP30
+
+Маркетинг: [`docs/MARKETING.md`](docs/MARKETING.md) · креатив: [`docs/promo-creative.png`](docs/promo-creative.png)
 
 ## Поддержка
 
