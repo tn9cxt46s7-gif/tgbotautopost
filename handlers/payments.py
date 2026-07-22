@@ -38,20 +38,31 @@ def _priced(plan: dict, discount: int = 0) -> tuple[int, int]:
 
 
 def price_list_text(discount: int = 0, promo: str | None = None, lang: str = "ru") -> str:
-    lines = [t("price_header", lang)]
+    crown = tg_emoji("CROWN", force=True)
+    cash = tg_emoji("CASH", force=True)
+    lines = [
+        f"{crown} <b>Premium · Latvia</b> 🇱🇻\n"
+        f"{cash} EUR\n"
+    ]
+    # keep i18n header nuance
+    header = t("price_header", lang)
+    # replace plain crown if present — header already has 👑
+    lines = [header.replace("👑", crown).replace("💎", crown)]
     if promo and discount:
-        lines.append(f"🎟 <code>{promo}</code>: −{discount}%\n")
+        lines.append(f"{tg_emoji('PROMO', force=True)} <code>{promo}</code>: −{discount}%\n")
     for key, plan in PLANS.items():
-        stars, eur = _priced(plan, discount)
+        _, eur = _priced(plan, discount)
         title = plan_title(key, lang)
         base_eur = plan.get("eur") or plan["rub"]
+        icon_key = {"week": "PLAN_WEEK", "month": "PLAN_MONTH", "quarter": "PLAN_QUARTER"}.get(key, "GEM")
+        icon = tg_emoji(icon_key, force=True)
         if discount:
             lines.append(
-                f"💶 <b>{title}</b> — <s>{base_eur} €</s> → <b>{eur} €</b>"
+                f"{icon} <b>{title}</b> — <s>{base_eur} €</s> → <b>{eur} €</b>"
             )
         else:
-            lines.append(f"💶 <b>{title}</b> — <b>{eur} €</b>")
-    auto = "CryptoBot ✅" if cryptobot_configured() else "CryptoBot"
+            lines.append(f"{icon} <b>{title}</b> — <b>{eur} €</b>")
+    auto = f"{tg_emoji('CRYPTOBOT', force=True)} CryptoBot ✅" if cryptobot_configured() else f"{tg_emoji('CRYPTOBOT', force=True)} CryptoBot"
     lines.append(
         f"\n{auto}\n"
         + t("pay_methods_hint", lang, support=SUPPORT_USERNAME)
@@ -138,8 +149,8 @@ async def choose_payment_method(callback: CallbackQuery, state: FSMContext):
     disc_line = f"\n🎟 −{discount}% → <b>{eur} €</b>" if discount else ""
 
     await callback.message.edit_text(
-        f"{tg_emoji('SUB')} <b>{title}</b>\n"
-        f"<b>{base} €</b> · {plan['days']}d{disc_line}\n\n"
+        f"{tg_emoji('CROWN', force=True)} <b>{title}</b>\n"
+        f"{tg_emoji('CASH', force=True)} <b>{base} €</b> · {plan['days']}d{disc_line}\n\n"
         + t("choose_pay", lang),
         reply_markup=payment_method_kb(plan_key, cryptobot=cryptobot_configured(), lang=lang),
     )

@@ -4,10 +4,16 @@ from __future__ import annotations
 
 LANGS = ("ru", "en", "lt", "et")
 LANG_LABELS = {
-    "ru": "Русский",
-    "en": "English",
-    "lt": "Lietuvių",
-    "et": "Eesti",
+    "ru": "🇷🇺 Русский",
+    "en": "🇬🇧 English",
+    "lt": "🇱🇹 Lietuvių",
+    "et": "🇪🇪 Eesti",
+}
+LANG_FLAGS = {
+    "ru": "🇷🇺",
+    "en": "🇬🇧",
+    "lt": "🇱🇹",
+    "et": "🇪🇪",
 }
 
 # Reply-keyboard button labels per language
@@ -43,35 +49,35 @@ def all_btn(key: str) -> set[str]:
 
 TEXTS = {
     "choose_lang": {
-        "ru": "🌍 Выбери язык / Choose language",
-        "en": "🌍 Choose your language",
-        "lt": "🌍 Pasirinkite kalbą",
-        "et": "🌍 Vali keel",
+        "ru": "🌍 Выбери язык\n🇷🇺 🇬🇧 🇱🇹 🇪🇪",
+        "en": "🌍 Choose your language\n🇷🇺 🇬🇧 🇱🇹 🇪🇪",
+        "lt": "🌍 Pasirinkite kalbą\n🇷🇺 🇬🇧 🇱🇹 🇪🇪",
+        "et": "🌍 Vali keel\n🇷🇺 🇬🇧 🇱🇹 🇪🇪",
     },
     "lang_saved": {
-        "ru": "✅ Язык сохранён: Русский",
-        "en": "✅ Language saved: English",
-        "lt": "✅ Kalba išsaugota: Lietuvių",
-        "et": "✅ Keel salvestatud: Eesti",
+        "ru": "✅ Язык сохранён: 🇷🇺 Русский",
+        "en": "✅ Language saved: 🇬🇧 English",
+        "lt": "✅ Kalba išsaugota: 🇱🇹 Lietuvių",
+        "et": "✅ Keel salvestatud: 🇪🇪 Eesti",
     },
     "channel_required": {
         "ru": (
-            "📢 <b>Подпишись на канал бота</b>\n\n"
+            "📢 <b>Подпишись на канал</b> @autopostbottg\n\n"
             "Без подписки бот недоступен.\n"
             "Нажми «Подписаться», затем «Проверить»."
         ),
         "en": (
-            "📢 <b>Subscribe to the bot channel</b>\n\n"
+            "📢 <b>Subscribe to</b> @autopostbottg\n\n"
             "Without a subscription the bot is locked.\n"
             "Tap Subscribe, then Check."
         ),
         "lt": (
-            "📢 <b>Prenumeruokite botų kanalą</b>\n\n"
+            "📢 <b>Prenumeruokite</b> @autopostbottg\n\n"
             "Be prenumeratos botas nepasiekiamas.\n"
             "Paspauskite Prenumeruoti, tada Tikrinti."
         ),
         "et": (
-            "📢 <b>Telli boti kanal</b>\n\n"
+            "📢 <b>Telli kanal</b> @autopostbottg\n\n"
             "Ilma tellimuseta bot ei tööta.\n"
             "Vajuta Telli, seejärel Kontrolli."
         ),
@@ -147,10 +153,10 @@ TEXTS = {
         ),
     },
     "price_header": {
-        "ru": "💎 <b>Подписка · барахолки Латвии</b> 🇱🇻\nЦены в <b>EUR</b> (EU)\n",
-        "en": "💎 <b>Subscription · Latvia markets</b> 🇱🇻\nPrices in <b>EUR</b> (EU)\n",
-        "lt": "💎 <b>Prenumerata · Latvijos turgeliai</b> 🇱🇻\nKainos <b>EUR</b> (ES)\n",
-        "et": "💎 <b>Tellimus · Läti turud</b> 🇱🇻\nHinnad <b>EUR</b> (EL)\n",
+        "ru": "👑 <b>Premium · барахолки Латвии</b> 🇱🇻\nЦены в <b>EUR</b>\n",
+        "en": "👑 <b>Premium · Latvia markets</b> 🇱🇻\nPrices in <b>EUR</b>\n",
+        "lt": "👑 <b>Premium · Latvijos turgeliai</b> 🇱🇻\nKainos <b>EUR</b>\n",
+        "et": "👑 <b>Premium · Läti turud</b> 🇱🇻\nHinnad <b>EUR</b>\n",
     },
     "choose_plan": {
         "ru": "Выбери план 👇",
@@ -159,16 +165,16 @@ TEXTS = {
         "et": "Vali paket 👇",
     },
     "choose_pay": {
-        "ru": "Выбери способ оплаты (EUR):",
-        "en": "Choose payment method (EUR):",
-        "lt": "Pasirinkite mokėjimo būdą (EUR):",
-        "et": "Vali makseviis (EUR):",
+        "ru": "Способ оплаты (EUR):",
+        "en": "Payment method (EUR):",
+        "lt": "Mokėjimo būdas (EUR):",
+        "et": "Makseviis (EUR):",
     },
     "pay_methods_hint": {
-        "ru": "Оплата: SEPA/карта · другие банки · CryptoBot · Stars\nПромо: START20, SALE15, VIP30\nСаппорт: @{support}",
-        "en": "Pay: SEPA/card · other banks · CryptoBot · Stars\nPromos: START20, SALE15, VIP30\nSupport: @{support}",
-        "lt": "Mokėjimas: SEPA/kortelė · kiti bankai · CryptoBot · Stars\nPromo: START20, SALE15, VIP30\nPagalba: @{support}",
-        "et": "Makse: SEPA/kaart · teised pangad · CryptoBot · Stars\nPromo: START20, SALE15, VIP30\nTugi: @{support}",
+        "ru": "1) SEPA/карта · 2) банки · 3) CryptoBot · 4) крипта · 5) Stars\nПромо: START20, SALE15, VIP30\n@{support}",
+        "en": "1) SEPA/card · 2) banks · 3) CryptoBot · 4) crypto · 5) Stars\nPromos: START20, SALE15, VIP30\n@{support}",
+        "lt": "1) SEPA/kortelė · 2) bankai · 3) CryptoBot · 4) kripto · 5) Stars\nPromo: START20, SALE15, VIP30\n@{support}",
+        "et": "1) SEPA/kaart · 2) pangad · 3) CryptoBot · 4) krüpto · 5) Stars\nPromo: START20, SALE15, VIP30\n@{support}",
     },
 }
 

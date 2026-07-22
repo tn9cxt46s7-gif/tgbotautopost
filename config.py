@@ -53,9 +53,10 @@ SUPPORT_USERNAME = (os.getenv("SUPPORT_USERNAME", "eb_support") or "eb_support")
 SUPPORT_URL = f"https://t.me/{SUPPORT_USERNAME}"
 
 # Required public channel — user must join before using the bot
-# Example: @your_channel or -1001234567890
-REQUIRED_CHANNEL = (os.getenv("REQUIRED_CHANNEL", "") or "").strip()
+REQUIRED_CHANNEL = (os.getenv("REQUIRED_CHANNEL", "@autopostbottg") or "@autopostbottg").strip()
 REQUIRED_CHANNEL_URL = (os.getenv("REQUIRED_CHANNEL_URL", "") or "").strip() or None
+if not REQUIRED_CHANNEL_URL and REQUIRED_CHANNEL.startswith("@"):
+    REQUIRED_CHANNEL_URL = f"https://t.me/{REQUIRED_CHANNEL.lstrip('@')}"
 
 # EU / Latvia payment details (EUR). Leave placeholders → support.
 PAYMENT_CARD_DETAILS = os.getenv(
@@ -81,10 +82,10 @@ PAYMENT_RUB_WEEK = PAYMENT_EUR_WEEK
 PAYMENT_RUB_MONTH = PAYMENT_EUR_MONTH
 PAYMENT_RUB_QUARTER = PAYMENT_EUR_QUARTER
 
-BOT_VERSION = "2.3.0"
+BOT_VERSION = "2.3.1"
 TRIAL_DAYS = int(os.getenv("TRIAL_DAYS", "1"))
-# Disable premium custom emoji in text (faster, less lag on clients)
-USE_PREMIUM_EMOJI = os.getenv("USE_PREMIUM_EMOJI", "0") == "1"
+# Premium emoji in message text (inline button icons always use pack IDs)
+USE_PREMIUM_EMOJI = os.getenv("USE_PREMIUM_EMOJI", "1") == "1"
 DEFAULT_LANG = os.getenv("DEFAULT_LANG", "ru")
 
 # CryptoBot (Crypto Pay) — автооплата криптой

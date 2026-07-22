@@ -76,6 +76,7 @@ support_exit_kb = support_exit_kb_for("ru")
 
 
 def language_kb() -> InlineKeyboardMarkup:
+    """Language picker with country flags."""
     rows = [
         [InlineKeyboardButton(text=LANG_LABELS[code], callback_data=f"lang_{code}")]
         for code in LANGS
@@ -85,17 +86,24 @@ def language_kb() -> InlineKeyboardMarkup:
 
 def channel_gate_kb(lang: str = "ru") -> InlineKeyboardMarkup:
     labels = {
-        "ru": ("Подписаться", "Проверить подписку"),
-        "en": ("Subscribe", "Check subscription"),
-        "lt": ("Prenumeruoti", "Tikrinti prenumeratą"),
-        "et": ("Telli", "Kontrolli tellimust"),
+        "ru": ("📢 Подписаться @autopostbottg", "✅ Проверить подписку"),
+        "en": ("📢 Subscribe @autopostbottg", "✅ Check subscription"),
+        "lt": ("📢 Prenumeruoti @autopostbottg", "✅ Tikrinti"),
+        "et": ("📢 Telli @autopostbottg", "✅ Kontrolli"),
     }
     sub_l, check_l = labels.get(lang, labels["ru"])
     rows = []
-    url = channel_url()
-    if url:
-        rows.append([InlineKeyboardButton(text=sub_l, url=url)])
-    rows.append([InlineKeyboardButton(text=check_l, callback_data="channel_check")])
+    url = channel_url() or "https://t.me/autopostbottg"
+    rows.append([InlineKeyboardButton(
+        text=sub_l,
+        url=url,
+        icon_custom_emoji_id=eid("CHANNEL"),
+    )])
+    rows.append([InlineKeyboardButton(
+        text=check_l,
+        callback_data="channel_check",
+        icon_custom_emoji_id=eid("OK"),
+    )])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -110,12 +118,12 @@ def profile_menu_kb(lang: str = "ru") -> InlineKeyboardMarkup:
     }
     a, s, r, tr = labels.get(lang, labels["ru"])
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=a, callback_data="account_menu")],
-        [InlineKeyboardButton(text=s, callback_data="sub_menu")],
-        [InlineKeyboardButton(text=r, callback_data="ref_menu")],
-        [InlineKeyboardButton(text=tr, callback_data="trial_start")],
-        [InlineKeyboardButton(text=f"Support @{SUPPORT_USERNAME}", url=SUPPORT_URL)],
-        [InlineKeyboardButton(text=btn("language", lang), callback_data="lang_menu")],
+        [InlineKeyboardButton(text=a, callback_data="account_menu", icon_custom_emoji_id=eid("USER"))],
+        [InlineKeyboardButton(text=s, callback_data="sub_menu", icon_custom_emoji_id=eid("CROWN"))],
+        [InlineKeyboardButton(text=r, callback_data="ref_menu", icon_custom_emoji_id=eid("REF"))],
+        [InlineKeyboardButton(text=tr, callback_data="trial_start", icon_custom_emoji_id=eid("FIRE"))],
+        [InlineKeyboardButton(text=f"@{SUPPORT_USERNAME}", url=SUPPORT_URL, icon_custom_emoji_id=eid("SUPPORT"))],
+        [InlineKeyboardButton(text=btn("language", lang), callback_data="lang_menu", icon_custom_emoji_id=eid("LANG"))],
     ])
 
 
@@ -130,8 +138,12 @@ def support_menu_kb(lang: str = "ru") -> InlineKeyboardMarkup:
         "et": "Vestlus botis (pilet)",
     }
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=f"@{SUPPORT_USERNAME}", url=SUPPORT_URL)],
-        [InlineKeyboardButton(text=labels.get(lang, labels["ru"]), callback_data="support_ticket")],
+        [InlineKeyboardButton(text=f"@{SUPPORT_USERNAME}", url=SUPPORT_URL, icon_custom_emoji_id=eid("SUPPORT"))],
+        [InlineKeyboardButton(
+            text=labels.get(lang, labels["ru"]),
+            callback_data="support_ticket",
+            icon_custom_emoji_id=eid("TICKET"),
+        )],
     ])
 
 
@@ -172,16 +184,28 @@ def account_kb(linked: bool, serverless: bool = False, lang: str = "ru") -> Inli
     }
     L = labels.get(lang, labels["ru"])
     if linked:
-        rows = [[InlineKeyboardButton(text=L["unlink"], callback_data="account_unlink")]]
+        rows = [[InlineKeyboardButton(
+            text=L["unlink"], callback_data="account_unlink", icon_custom_emoji_id=eid("LOCK"),
+        )]]
     else:
         rows = []
         if serverless:
-            rows.append([InlineKeyboardButton(text=L["phone_v"], callback_data="account_link_phone")])
-            rows.append([InlineKeyboardButton(text=L["qr_try"], callback_data="account_link")])
+            rows.append([InlineKeyboardButton(
+                text=L["phone_v"], callback_data="account_link_phone", icon_custom_emoji_id=eid("LINK"),
+            )])
+            rows.append([InlineKeyboardButton(
+                text=L["qr_try"], callback_data="account_link", icon_custom_emoji_id=eid("USER"),
+            )])
         else:
-            rows.append([InlineKeyboardButton(text=L["qr"], callback_data="account_link")])
-            rows.append([InlineKeyboardButton(text=L["phone"], callback_data="account_link_phone")])
-    rows.append([InlineKeyboardButton(text=L["back"], callback_data="back_to_profile")])
+            rows.append([InlineKeyboardButton(
+                text=L["qr"], callback_data="account_link", icon_custom_emoji_id=eid("LINK"),
+            )])
+            rows.append([InlineKeyboardButton(
+                text=L["phone"], callback_data="account_link_phone", icon_custom_emoji_id=eid("USER"),
+            )])
+    rows.append([InlineKeyboardButton(
+        text=L["back"], callback_data="back_to_profile", icon_custom_emoji_id=eid("BACK"),
+    )])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -193,7 +217,11 @@ def back_to_menu_kb_for(lang: str = "ru") -> InlineKeyboardMarkup:
         "et": "Tagasi profiili",
     }
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=labels.get(lang, labels["ru"]), callback_data="back_to_profile")],
+        [InlineKeyboardButton(
+            text=labels.get(lang, labels["ru"]),
+            callback_data="back_to_profile",
+            icon_custom_emoji_id=eid("BACK"),
+        )],
     ])
 
 
@@ -201,101 +229,155 @@ back_to_menu_kb = back_to_menu_kb_for("ru")
 
 
 def subscription_plans_kb(plans: dict, show_promo: bool = False, lang: str = "ru") -> InlineKeyboardMarkup:
+    """Premium plans with owner sticker-pack icons."""
+    from utils.emoji import PLAN_EMOJI_KEY
     rows = []
     for key, plan in plans.items():
         eur = plan.get("eur") or plan.get("rub")
         title = plan_title(key, lang)
         label = f"{title} — {eur} €"
-        rows.append([InlineKeyboardButton(text=label, callback_data=f"plan_{key}")])
+        icon_key = PLAN_EMOJI_KEY.get(key, "GEM")
+        rows.append([InlineKeyboardButton(
+            text=label,
+            callback_data=f"plan_{key}",
+            icon_custom_emoji_id=eid(icon_key),
+        )])
     promo_labels = {
-        "ru": "🎟 Ввести промокод",
-        "en": "🎟 Enter promo",
-        "lt": "🎟 Įvesti promo kodą",
-        "et": "🎟 Sisesta sooduskood",
+        "ru": "Ввести промокод",
+        "en": "Enter promo",
+        "lt": "Įvesti promo kodą",
+        "et": "Sisesta sooduskood",
     }
     back_labels = {"ru": "Назад", "en": "Back", "lt": "Atgal", "et": "Tagasi"}
     if show_promo:
         rows.append([InlineKeyboardButton(
             text=promo_labels.get(lang, promo_labels["ru"]),
             callback_data="promo_enter",
+            icon_custom_emoji_id=eid("PROMO"),
         )])
     rows.append([InlineKeyboardButton(
         text=back_labels.get(lang, "Back"),
         callback_data="back_to_profile",
+        icon_custom_emoji_id=eid("BACK"),
     )])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def payment_method_kb(plan_key: str, cryptobot: bool = False, lang: str = "ru") -> InlineKeyboardMarkup:
-    """EU payment methods — EUR first, Stars last (optional)."""
+    """Ordered EU payments with premium pack icons.
+
+    Order: SEPA/card → other banks → CryptoBot → crypto manual → Stars.
+    """
     L = {
         "ru": {
-            "card": "💳 SEPA / карта (EUR)",
-            "banks": "🏦 Другие банки (EUR)",
+            "card": "SEPA / карта (EUR)",
+            "banks": "Другие банки (EUR)",
             "cb": "CryptoBot USDT (авто)",
             "crypto": "Крипта вручную",
-            "stars": "Telegram Stars (опц.)",
-            "back": "Назад",
+            "stars": "Telegram Stars",
+            "back": "Назад к планам",
         },
         "en": {
-            "card": "💳 SEPA / card (EUR)",
-            "banks": "🏦 Other banks (EUR)",
+            "card": "SEPA / card (EUR)",
+            "banks": "Other banks (EUR)",
             "cb": "CryptoBot USDT (auto)",
             "crypto": "Crypto manual",
-            "stars": "Telegram Stars (opt.)",
-            "back": "Back",
+            "stars": "Telegram Stars",
+            "back": "Back to plans",
         },
         "lt": {
-            "card": "💳 SEPA / kortelė (EUR)",
-            "banks": "🏦 Kiti bankai (EUR)",
+            "card": "SEPA / kortelė (EUR)",
+            "banks": "Kiti bankai (EUR)",
             "cb": "CryptoBot USDT (auto)",
-            "crypto": "Kriptovaliuta rankiniu",
-            "stars": "Telegram Stars (pasir.)",
-            "back": "Atgal",
+            "crypto": "Kriptovaliuta",
+            "stars": "Telegram Stars",
+            "back": "Atgal į planus",
         },
         "et": {
-            "card": "💳 SEPA / kaart (EUR)",
-            "banks": "🏦 Teised pangad (EUR)",
+            "card": "SEPA / kaart (EUR)",
+            "banks": "Teised pangad (EUR)",
             "cb": "CryptoBot USDT (auto)",
             "crypto": "Krüpto käsitsi",
-            "stars": "Telegram Stars (valik)",
-            "back": "Tagasi",
+            "stars": "Telegram Stars",
+            "back": "Tagasi paketitesse",
         },
     }[lang if lang in ("ru", "en", "lt", "et") else "ru"]
 
     rows = [
-        [InlineKeyboardButton(text=L["card"], callback_data=f"pay_card_{plan_key}")],
-        [InlineKeyboardButton(text=L["banks"], callback_data=f"pay_banks_{plan_key}")],
+        [InlineKeyboardButton(
+            text=L["card"],
+            callback_data=f"pay_card_{plan_key}",
+            icon_custom_emoji_id=eid("CARD"),
+        )],
+        [InlineKeyboardButton(
+            text=L["banks"],
+            callback_data=f"pay_banks_{plan_key}",
+            icon_custom_emoji_id=eid("BANKS"),
+        )],
     ]
     if cryptobot:
-        rows.append([InlineKeyboardButton(text=L["cb"], callback_data=f"pay_cryptobot_{plan_key}")])
+        rows.append([InlineKeyboardButton(
+            text=L["cb"],
+            callback_data=f"pay_cryptobot_{plan_key}",
+            icon_custom_emoji_id=eid("CRYPTOBOT"),
+        )])
     rows.extend([
-        [InlineKeyboardButton(text=L["crypto"], callback_data=f"pay_crypto_{plan_key}")],
-        [InlineKeyboardButton(text=L["stars"], callback_data=f"pay_stars_{plan_key}")],
-        [InlineKeyboardButton(text=f"@{SUPPORT_USERNAME}", url=SUPPORT_URL)],
-        [InlineKeyboardButton(text=L["back"], callback_data="sub_menu")],
+        [InlineKeyboardButton(
+            text=L["crypto"],
+            callback_data=f"pay_crypto_{plan_key}",
+            icon_custom_emoji_id=eid("CRYPTO"),
+        )],
+        [InlineKeyboardButton(
+            text=L["stars"],
+            callback_data=f"pay_stars_{plan_key}",
+            icon_custom_emoji_id=eid("STAR"),
+        )],
+        [InlineKeyboardButton(
+            text=f"@{SUPPORT_USERNAME}",
+            url=SUPPORT_URL,
+            icon_custom_emoji_id=eid("SUPPORT"),
+        )],
+        [InlineKeyboardButton(
+            text=L["back"],
+            callback_data="sub_menu",
+            icon_custom_emoji_id=eid("BACK"),
+        )],
     ])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def pending_payment_user_kb(payment_id: int, lang: str = "ru") -> InlineKeyboardMarkup:
     L = {
-        "ru": ("Я оплатил ✅", "Отменить заявку"),
-        "en": ("I paid ✅", "Cancel request"),
-        "lt": ("Sumokėjau ✅", "Atšaukti"),
-        "et": ("Maksin ✅", "Tühista"),
-    }.get(lang, ("Я оплатил ✅", "Отменить заявку"))
+        "ru": ("Я оплатил", "Отменить заявку"),
+        "en": ("I paid", "Cancel request"),
+        "lt": ("Sumokėjau", "Atšaukti"),
+        "et": ("Maksin", "Tühista"),
+    }.get(lang, ("Я оплатил", "Отменить заявку"))
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=L[0], callback_data=f"pay_done_{payment_id}")],
-        [InlineKeyboardButton(text=L[1], callback_data=f"pay_cancel_{payment_id}")],
-        [InlineKeyboardButton(text=f"@{SUPPORT_USERNAME}", url=SUPPORT_URL)],
+        [InlineKeyboardButton(
+            text=L[0], callback_data=f"pay_done_{payment_id}", icon_custom_emoji_id=eid("OK"),
+        )],
+        [InlineKeyboardButton(
+            text=L[1], callback_data=f"pay_cancel_{payment_id}", icon_custom_emoji_id=eid("BACK"),
+        )],
+        [InlineKeyboardButton(
+            text=f"@{SUPPORT_USERNAME}", url=SUPPORT_URL, icon_custom_emoji_id=eid("SUPPORT"),
+        )],
     ])
 
 
 def admin_payment_kb(payment_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Подтвердить оплату", callback_data=f"adm_pay_ok_{payment_id}")],
-        [InlineKeyboardButton(text="Отклонить", callback_data=f"adm_pay_no_{payment_id}")],
+        [InlineKeyboardButton(
+            text="Подтвердить оплату",
+            callback_data=f"adm_pay_ok_{payment_id}",
+            icon_custom_emoji_id=eid("OK"),
+        )],
+        [InlineKeyboardButton(
+            text="Отклонить",
+            callback_data=f"adm_pay_no_{payment_id}",
+            icon_custom_emoji_id=eid("LOCK"),
+        )],
     ])
 
 
