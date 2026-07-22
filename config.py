@@ -5,6 +5,9 @@ load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 
+# True on Vercel serverless (no always-on process, short request budget)
+IS_VERCEL = bool(os.getenv("VERCEL") or os.getenv("VERCEL_ENV"))
+
 # my.telegram.org → API development tools (нужно для постинга от аккаунта клиента)
 TG_API_ID = int(os.getenv("TG_API_ID", "0") or "0")
 TG_API_HASH = os.getenv("TG_API_HASH", "")
@@ -59,10 +62,14 @@ DEFAULT_JITTER_SECONDS = 180
 DEFAULT_QUIET_START = 0   # 00:00 UTC
 DEFAULT_QUIET_END = 6     # 06:00 UTC
 MAX_GROUP_FAILS = 3
-INTER_GROUP_DELAY_MIN = 30
-INTER_GROUP_DELAY_MAX = 120
+# On Vercel keep delays short so a cron/webhook fits into maxDuration
+INTER_GROUP_DELAY_MIN = 3 if IS_VERCEL else 30
+INTER_GROUP_DELAY_MAX = 8 if IS_VERCEL else 120
 SCHEDULER_TICK_SECONDS = 60
-GLOBAL_POST_DELAY = 1.5  # seconds between any two bot posts
+GLOBAL_POST_DELAY = 0.4 if IS_VERCEL else 1.5  # seconds between any two posts
+# Soft time budget for one posting cycle on serverless (seconds)
+# Hobby Vercel ≈ 10s maxDuration → keep budget under that
+POST_BUDGET_SECONDS = int(os.getenv("POST_BUDGET_SECONDS", "8" if IS_VERCEL else "300"))
 REFERRAL_BONUS_DAYS = 3
 
 

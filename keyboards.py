@@ -80,7 +80,7 @@ profile_menu = InlineKeyboardMarkup(inline_keyboard=[
 ])
 
 
-def account_kb(linked: bool) -> InlineKeyboardMarkup:
+def account_kb(linked: bool, serverless: bool = False) -> InlineKeyboardMarkup:
     if linked:
         rows = [
             [InlineKeyboardButton(
@@ -90,13 +90,29 @@ def account_kb(linked: bool) -> InlineKeyboardMarkup:
             )],
         ]
     else:
-        rows = [
-            [InlineKeyboardButton(
+        rows = []
+        if serverless:
+            rows.append([InlineKeyboardButton(
+                text="Подключить по номеру (Vercel)",
+                callback_data="account_link_phone",
+                icon_custom_emoji_id=eid("LINK"),
+            )])
+            rows.append([InlineKeyboardButton(
+                text="Попробовать QR",
+                callback_data="account_link",
+                icon_custom_emoji_id=eid("USER"),
+            )])
+        else:
+            rows.append([InlineKeyboardButton(
                 text="Подключить через QR",
                 callback_data="account_link",
                 icon_custom_emoji_id=eid("LINK"),
-            )],
-        ]
+            )])
+            rows.append([InlineKeyboardButton(
+                text="Подключить по номеру",
+                callback_data="account_link_phone",
+                icon_custom_emoji_id=eid("USER"),
+            )])
     rows.append([InlineKeyboardButton(
         text="Назад в профиль",
         callback_data="back_to_profile",

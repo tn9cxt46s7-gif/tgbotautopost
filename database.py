@@ -52,6 +52,7 @@ _MIGRATIONS = [
     ("target_groups", "cooldown_until", "TIMESTAMP"),
     ("target_groups", "last_post_at", "TIMESTAMP"),
     ("target_groups", "active", "BOOLEAN DEFAULT TRUE"),
+    ("target_groups", "bot_can_post", "BOOLEAN DEFAULT FALSE"),
     ("target_groups", "created_at", "TIMESTAMP"),
 ]
 
@@ -418,7 +419,10 @@ async def delete_ad(ad_id: int) -> bool:
 
 
 async def get_active_ads_for_posting():
-    """Active ads whose owners have autopost enabled and active subscription."""
+    """Active ads whose owners have autopost enabled and active subscription.
+
+    Owner may post via linked Telethon session and/or bot membership in groups.
+    """
     from models import Ad, User
     now = datetime.utcnow()
     async with AsyncSession() as session:
@@ -429,7 +433,6 @@ async def get_active_ads_for_posting():
                 User.is_blocked == False,  # noqa: E712
                 User.subscription_end.isnot(None),
                 User.subscription_end > now,
-                User.tg_session.isnot(None),
             )
         )
         return list(result.all())
@@ -462,6 +465,7 @@ async def create_group(
     jitter_seconds: int = DEFAULT_JITTER_SECONDS,
     quiet_hours_start: int = 0,
     quiet_hours_end: int = 6,
+    bot_can_post: bool = False,
 ):
     from models import TargetGroup
     async with AsyncSession() as session:
@@ -481,6 +485,7 @@ async def create_group(
             jitter_seconds=jitter_seconds,
             quiet_hours_start=quiet_hours_start,
             quiet_hours_end=quiet_hours_end,
+            bot_can_post=bot_can_post,
         )
         session.add(group)
         await session.commit()

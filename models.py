@@ -55,6 +55,8 @@ class TargetGroup(Base):
     cooldown_until = Column(DateTime, default=None)
     last_post_at = Column(DateTime, default=None)
     active = Column(Boolean, default=True)
+    # True if the bot itself can post (added to group as member/admin)
+    bot_can_post = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 

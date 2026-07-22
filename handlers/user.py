@@ -33,13 +33,14 @@ async def cmd_start(message: Message, command: CommandObject, state: FSMContext)
         return
 
     await message.answer(
-        f"{tg_emoji('WAVE')} <b>Автопостинг в барахолки</b>\n\n"
-        f"{tg_emoji('USER')} Подключи аккаунт через QR (как Desktop)\n"
-        f"{tg_emoji('GROUPS')} Выбери группы\n"
+        f"{tg_emoji('WAVE')} <b>Автопостинг в барахолки и группы</b>\n\n"
+        f"{tg_emoji('GROUPS')} Добавь группы (барахолки)\n"
         f"{tg_emoji('ADS')} Создай объявление\n"
-        f"{tg_emoji('AUTO')} Включи автопостинг — посты уходят сами\n\n"
-        "Без QR автопост не работает: в барахолки ботов не пускают.\n"
-        "Начни с «Мой аккаунт» 👇",
+        f"{tg_emoji('AUTO')} «Запостить сейчас» или включи автопостинг\n\n"
+        "<b>Как уходят посты:</b>\n"
+        "• Обычная группа — добавь бота админом\n"
+        "• Барахолка без ботов — «Мой аккаунт» (на Vercel — по номеру)\n\n"
+        "Начни с подписки и «Мои группы» 👇",
         reply_markup=main_menu,
     )
 

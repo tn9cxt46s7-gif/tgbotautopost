@@ -22,36 +22,26 @@ def format_group(g) -> str:
     cooldown = ""
     if g.cooldown_until:
         cooldown = f"\nCooldown до: {g.cooldown_until.strftime('%d.%m %H:%M')} UTC"
+    mode = "бот в группе ✅" if getattr(g, "bot_can_post", False) else "нужен твой аккаунт (QR/телефон)"
     return (
         f"{tg_emoji('GROUPS')} <b>{g.title or g.chat_id}</b>\n"
         f"chat_id: <code>{g.chat_id}</code>\n"
         f"Статус: <b>{status}</b>\n"
+        f"Режим: {mode}\n"
         f"Интервал: {g.min_interval_minutes} мин (±{g.jitter_seconds} сек)\n"
         f"Тихие часы: {g.quiet_hours_start:02d}–{g.quiet_hours_end:02d} UTC\n"
         f"Ошибок подряд: {g.fail_count}{cooldown}"
     )
 
 
-async def show_groups(target, telegram_id: int, edit: bool = False):
-    user = await get_user(telegram_id)
-    if not user:
-        user = await get_or_create_user(telegram_id)
-    groups = await get_user_groups(user.id)
-    limits = effective_limits(user)
-    header = (
-        f"{tg_emoji('GROUPS')} <b>Мои группы</b>\n"
-        f"Использовано: {len(groups)}/{limits['groups']}\n\n"
-        "Нажми «➕ Добавить группу» и выбери барахолку из меню Telegram."
-    )
-    if not groups:
-        text = header + f"\n\n{tg_emoji('EMPTY')} Группы ещё не добавлены."
-    else:
-        text = header + "\n\nВыбери группу:"
-    kb = groups_list_kb(groups)
-    if edit:
-        await target.edit_text(text, reply_markup=kb)
-    else:
-        await target.answer(text, reply_markup=kb)
+async def _probe_bot_can_post(bot: Bot, chat_id: int) -> bool:
+    """True if the bot is already in the chat and can post."""
+    try:
+        me = await bot.get_me()
+        member = await bot.get_chat_member(chat_id, me.id)
+        return member.status in ("creator", "administrator", "member")
+    except TelegramAPIError:
+        return False
 
 
 async def _add_group_for_user(
@@ -61,7 +51,7 @@ async def _add_group_for_user(
     chat_id: int,
     title: str | None,
 ):
-    """Save group by chat_id. Bot membership is NOT required."""
+    """Save group by chat_id. Bot membership is optional (needed for bot-mode posts)."""
     user = await get_or_create_user(telegram_id, username)
     if not has_active_subscription(user):
         return False, "Нужна активная подписка."
@@ -78,6 +68,8 @@ async def _add_group_for_user(
         except TelegramAPIError:
             title = title or str(chat_id)
 
+    bot_can_post = await _probe_bot_can_post(bot, chat_id)
+
     group = await create_group(
         user_id=user.id,
         chat_id=chat_id,
@@ -85,10 +77,45 @@ async def _add_group_for_user(
         min_interval_minutes=user.default_interval or 60,
         quiet_hours_start=user.quiet_hours_start or 0,
         quiet_hours_end=user.quiet_hours_end or 6,
+        bot_can_post=bot_can_post,
     )
     if group is None:
         return False, "Эта группа уже добавлена."
-    return True, f"{tg_emoji('OK')} Группа добавлена!\n\n{format_group(group)}"
+
+    hint = (
+        "\n\nБот уже в группе — посты пойдут от бота (удобно на Vercel)."
+        if bot_can_post
+        else (
+            "\n\nБот не в группе. Для барахолок: «Мой аккаунт» → подключи "
+            "Telegram (на Vercel — по номеру, на сервере — QR)."
+            "\nИли добавь бота админом в эту группу."
+        )
+    )
+    return True, f"{tg_emoji('OK')} Группа добавлена!\n\n{format_group(group)}{hint}"
+
+
+async def show_groups(target, telegram_id: int, edit: bool = False):
+    user = await get_user(telegram_id)
+    if not user:
+        user = await get_or_create_user(telegram_id)
+    groups = await get_user_groups(user.id)
+    limits = effective_limits(user)
+    header = (
+        f"{tg_emoji('GROUPS')} <b>Мои группы</b>\n"
+        f"Использовано: {len(groups)}/{limits['groups']}\n\n"
+        "Нажми «➕ Добавить группу» и выбери барахолку / группу из меню Telegram.\n"
+        "• Обычные группы: добавь бота админом — посты от бота (Vercel OK)\n"
+        "• Барахолки без ботов: подключи свой аккаунт"
+    )
+    if not groups:
+        text = header + f"\n\n{tg_emoji('EMPTY')} Группы ещё не добавлены."
+    else:
+        text = header + "\n\nВыбери группу:"
+    kb = groups_list_kb(groups)
+    if edit:
+        await target.edit_text(text, reply_markup=kb)
+    else:
+        await target.answer(text, reply_markup=kb)
 
 
 @router.message(F.text == "Мои группы")
@@ -108,8 +135,10 @@ async def grp_help(callback: CallbackQuery):
         f"{tg_emoji('SUPPORT')} <b>Как добавить группу</b>\n\n"
         "1. «Мои группы» → «➕ Добавить группу»\n"
         "2. Нажми «Выбрать группу»\n"
-        "3. В меню Telegram тапни нужную барахолку\n\n"
-        "Бот в группу добавлять не нужно.",
+        "3. В меню Telegram тапни барахолку или группу\n\n"
+        "<b>Два режима:</b>\n"
+        "• Обычная группа — добавь бота админом, посты от бота\n"
+        "• Барахолка без ботов — подключи свой аккаунт в «Мой аккаунт»",
     )
     await callback.answer()
 
