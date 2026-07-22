@@ -31,7 +31,7 @@ def _priced(plan: dict, discount: int = 0) -> tuple[int, int]:
 
 
 def price_list_text(discount: int = 0, promo: str | None = None) -> str:
-    lines = [f"{tg_emoji('SUB')} <b>Подписка на автопостинг</b>\n"]
+    lines = [f"{tg_emoji('SUB')} <b>Подписка · барахолки Латвии</b> 🇱🇻\n"]
     if promo and discount:
         lines.append(f"🎟 Промокод <code>{promo}</code>: −{discount}%\n")
     for plan in PLANS.values():

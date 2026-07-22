@@ -43,13 +43,13 @@ async def cmd_start(message: Message, command: CommandObject, state: FSMContext)
         return
 
     await message.answer(
-        f"{tg_emoji('WAVE')} <b>Автопостинг в барахолки</b> · v{BOT_VERSION}\n\n"
+        f"{tg_emoji('WAVE')} <b>Автопост в барахолки Латвии</b> 🇱🇻 · v{BOT_VERSION}\n\n"
         f"{tg_emoji('USER')} Подключи аккаунт («Мой аккаунт»)\n"
-        f"{tg_emoji('GROUPS')} Добавь барахолки\n"
-        f"{tg_emoji('ADS')} Создай объявление\n"
+        f"{tg_emoji('GROUPS')} Добавь LV-группы (Rīga, Daugavpils и др.)\n"
+        f"{tg_emoji('ADS')} Создай объявление или «Шаблоны»\n"
         f"{tg_emoji('AUTO')} Включи автопостинг\n\n"
         "Посты идут <b>от твоего аккаунта</b>. Бот в группы не заходит.\n"
-        f"Есть пробный день в профиле · саппорт @{SUPPORT_USERNAME}\n\n"
+        f"Пробный день в профиле · саппорт @{SUPPORT_USERNAME}\n\n"
         "Меню ниже 👇",
         reply_markup=main_menu,
     )
@@ -127,7 +127,7 @@ async def trial_start(callback: CallbackQuery):
         f"{tg_emoji('OK')} Пробный день на {TRIAL_DAYS} дн. активен.\n"
         "Лимит: 1 объявление, 2 группы.\n"
         "1) Мой аккаунт → подключи\n"
-        "2) Добавь барахолки\n"
+        "2) Добавь LV-барахолки (Rīga и др.)\n"
         "3) Создай объявление и включи автопостинг"
     )
 

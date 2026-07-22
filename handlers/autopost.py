@@ -46,8 +46,8 @@ async def build_autopost_text(telegram_id: int) -> tuple[str, bool]:
         f"Антибан: интервал ≥{MIN_INTERVAL_MINUTES} мин, "
         f"≤{MAX_POSTS_PER_GROUP_PER_DAY}/сутки на группу, "
         f"≤{MAX_POSTS_PER_USER_PER_DAY}/сутки всего.\n"
-        "Посты только <b>от твоего аккаунта</b> — бот в барахолку не заходит.\n"
-        "100% защиты от бана нет; мы снижаем риск правилами и паузами."
+        "Посты только <b>от твоего аккаунта</b> в LV-барахолки — бот туда не заходит.\n"
+        "100% защиты от бана нет; снижаем риск правилами и паузами."
     )
     return text, user.autopost_enabled
 
