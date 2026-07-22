@@ -3,8 +3,9 @@ from aiogram.types import Message, CallbackQuery, ChatShared
 from aiogram.fsm.context import FSMContext
 from aiogram.exceptions import TelegramAPIError
 
+from utils.i18n import all_btn
 from keyboards import (
-    main_menu, cancel_kb, group_pick_kb, groups_list_kb, group_card_kb,
+    main_menu, cancel_kb, main_menu_kb, cancel_kb_for, group_pick_kb, groups_list_kb, group_card_kb,
 )
 from database import (
     get_or_create_user, get_user, create_group, get_group, get_user_groups,
@@ -103,7 +104,7 @@ async def show_groups(target, telegram_id: int, edit: bool = False):
         await target.answer(text, reply_markup=kb)
 
 
-@router.message(F.text == "Мои группы")
+@router.message(F.text.in_(all_btn("groups")))
 async def my_groups(message: Message):
     await show_groups(message, message.from_user.id)
 
@@ -167,7 +168,7 @@ async def grp_add_chat_shared(message: Message, state: FSMContext):
 
 @router.message(GroupAdd.waiting)
 async def grp_add_receive(message: Message, state: FSMContext):
-    if message.text == "Отмена":
+    if message.text in all_btn("cancel"):
         await state.clear()
         await message.answer("Отменено.", reply_markup=main_menu)
         return
@@ -252,7 +253,7 @@ async def grp_interval_start(callback: CallbackQuery, state: FSMContext):
 
 @router.message(GroupSettings.interval)
 async def grp_interval_save(message: Message, state: FSMContext):
-    if message.text == "Отмена":
+    if message.text in all_btn("cancel"):
         await state.clear()
         await message.answer("Отменено.", reply_markup=main_menu)
         return

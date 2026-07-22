@@ -41,6 +41,7 @@ from handlers.admin import router as admin_router
 from handlers.payments import router as payments_router
 from database import init_db
 from services.user_client import api_configured
+from middlewares.access import AccessMiddleware
 
 if not BOT_TOKEN:
     # Still create app so / returns a clear error instead of crash at import
@@ -49,6 +50,8 @@ if not BOT_TOKEN:
 else:
     bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher(storage=MemoryStorage())
+    dp.message.middleware(AccessMiddleware())
+    dp.callback_query.middleware(AccessMiddleware())
     dp.include_router(user_router)
     dp.include_router(account_router)
     dp.include_router(ads_router)
@@ -81,7 +84,7 @@ def _db_kind() -> str:
 async def root():
     return {
         "status": "ok" if BOT_TOKEN else "missing BOT_TOKEN",
-        "version": "2.2.0-lv",
+        "version": "2.3.0-eu",
         "vercel": IS_VERCEL,
         "db": _db_kind(),
         "tg_api": api_configured(),

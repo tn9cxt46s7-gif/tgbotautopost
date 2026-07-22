@@ -2,30 +2,36 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 
-from keyboards import main_menu, support_exit_kb, support_admin_kb, support_menu_kb
-from database import get_or_create_user, open_ticket, get_open_ticket, close_ticket
+from keyboards import main_menu_kb, support_exit_kb_for, support_admin_kb, support_menu_kb
+from database import get_or_create_user, open_ticket, get_open_ticket, close_ticket, get_user
 from utils.emoji import tg_emoji
+from utils.i18n import all_btn
 from config import ADMIN_IDS, is_admin, SUPPORT_USERNAME, SUPPORT_URL
 from states import SupportChat, AdminReply
 
 router = Router()
 
 
-@router.message(F.text == "Поддержка")
+async def _lang(uid: int) -> str:
+    u = await get_user(uid)
+    return (u.language if u and u.language else "ru")
+
+
+@router.message(F.text.in_(all_btn("support")))
 @router.callback_query(F.data == "support_start")
 async def support_menu(event: Message | CallbackQuery, state: FSMContext):
     await state.clear()
+    uid = event.from_user.id
+    lang = await _lang(uid)
     text = (
-        f"{tg_emoji('SUPPORT')} <b>Поддержка</b>\n\n"
-        f"Быстрый контакт в Telegram: <b>@{SUPPORT_USERNAME}</b>\n"
-        f"{SUPPORT_URL}\n\n"
-        "Или открой тикет прямо в боте — админ ответит здесь."
+        f"{tg_emoji('SUPPORT')} <b>Support</b>\n\n"
+        f"<b>@{SUPPORT_USERNAME}</b>\n{SUPPORT_URL}"
     )
     if isinstance(event, CallbackQuery):
-        await event.message.answer(text, reply_markup=support_menu_kb())
+        await event.message.answer(text, reply_markup=support_menu_kb(lang))
         await event.answer()
     else:
-        await event.answer(text, reply_markup=support_menu_kb())
+        await event.answer(text, reply_markup=support_menu_kb(lang))
 
 
 @router.callback_query(F.data == "support_ticket")
@@ -34,26 +40,25 @@ async def support_ticket_start(callback: CallbackQuery, state: FSMContext):
     ticket = await open_ticket(user.id, user.telegram_id)
     await state.set_state(SupportChat.chatting)
     await state.update_data(ticket_id=ticket.id)
+    lang = user.language or "ru"
 
     await callback.message.answer(
-        f"{tg_emoji('SUPPORT')} <b>Чат поддержки</b>\n"
-        f"Тикет #{ticket.id}\n\n"
-        "Напиши вопрос — админ ответит здесь.\n"
-        f"Также можно: @{SUPPORT_USERNAME}\n"
-        "Выход: «Завершить диалог».",
-        reply_markup=support_exit_kb,
+        f"{tg_emoji('SUPPORT')} <b>Support chat</b> #{ticket.id}\n"
+        f"@{SUPPORT_USERNAME}",
+        reply_markup=support_exit_kb_for(lang),
     )
     await callback.answer()
 
 
-@router.message(SupportChat.chatting, F.text == "Завершить диалог")
+@router.message(SupportChat.chatting, F.text.in_(all_btn("end_chat")))
 async def support_exit(message: Message, state: FSMContext):
     data = await state.get_data()
     ticket_id = data.get("ticket_id")
     if ticket_id:
         await close_ticket(ticket_id)
     await state.clear()
-    await message.answer(f"{tg_emoji('OK')} Диалог завершён.", reply_markup=main_menu)
+    lang = await _lang(message.from_user.id)
+    await message.answer(f"{tg_emoji('OK')} OK", reply_markup=main_menu_kb(lang))
 
 
 @router.message(SupportChat.chatting)

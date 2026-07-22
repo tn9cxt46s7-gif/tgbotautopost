@@ -36,6 +36,7 @@ _MIGRATIONS = [
     ("users", "tg_account_name", "VARCHAR"),
     ("users", "trial_used", "BOOLEAN DEFAULT FALSE"),
     ("users", "last_sub_remind_at", "TIMESTAMP"),
+    ("users", "language", "VARCHAR"),
     # ads
     ("ads", "title", "VARCHAR"),
     ("ads", "price", "VARCHAR"),
@@ -273,11 +274,25 @@ async def set_autopost_enabled(telegram_id: int, enabled: bool):
         return user
 
 
+async def set_user_language(telegram_id: int, language: str):
+    from models import User
+    async with AsyncSession() as session:
+        result = await session.execute(select(User).where(User.telegram_id == telegram_id))
+        user = result.scalar_one_or_none()
+        if not user:
+            return None
+        user.language = language
+        await session.commit()
+        await session.refresh(user)
+        return user
+
+
 async def update_user_settings(
     telegram_id: int,
     default_interval: int | None = None,
     quiet_hours_start: int | None = None,
     quiet_hours_end: int | None = None,
+    language: str | None = None,
 ):
     from models import User
     async with AsyncSession() as session:
@@ -291,6 +306,8 @@ async def update_user_settings(
             user.quiet_hours_start = quiet_hours_start
         if quiet_hours_end is not None:
             user.quiet_hours_end = quiet_hours_end
+        if language is not None:
+            user.language = language
         await session.commit()
         await session.refresh(user)
         return user

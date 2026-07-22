@@ -12,7 +12,8 @@ from aiogram import Router, F, Bot
 from aiogram.types import Message, CallbackQuery, BufferedInputFile
 from aiogram.fsm.context import FSMContext
 
-from keyboards import main_menu, cancel_kb, account_kb
+from utils.i18n import all_btn
+from keyboards import main_menu, cancel_kb, main_menu_kb, cancel_kb_for, account_kb
 from database import get_or_create_user, get_user, set_user_tg_session, user_has_tg_account
 from utils.emoji import tg_emoji
 from states import AccountLink
@@ -85,7 +86,7 @@ async def _save_linked(telegram_id: int, raw_session: str, name: str | None, pho
     )
 
 
-@router.message(F.text == "Мой аккаунт")
+@router.message(F.text.in_(all_btn("account")))
 async def account_menu_msg(message: Message, state: FSMContext):
     await state.clear()
     await cancel_qr_login(message.from_user.id)
@@ -219,7 +220,7 @@ async def account_link_phone(callback: CallbackQuery, state: FSMContext):
 
 @router.message(AccountLink.phone)
 async def account_phone(message: Message, state: FSMContext):
-    if message.text == "Отмена":
+    if message.text in all_btn("cancel"):
         await state.clear()
         await message.answer("Отменено.", reply_markup=main_menu)
         return
@@ -249,7 +250,7 @@ async def account_phone(message: Message, state: FSMContext):
 
 @router.message(AccountLink.code)
 async def account_code(message: Message, state: FSMContext):
-    if message.text == "Отмена":
+    if message.text in all_btn("cancel"):
         await state.clear()
         await message.answer("Отменено.", reply_markup=main_menu)
         return
@@ -289,7 +290,7 @@ async def account_code(message: Message, state: FSMContext):
 
 @router.message(AccountLink.qr_wait)
 async def account_qr_cancel(message: Message, state: FSMContext):
-    if message.text == "Отмена":
+    if message.text in all_btn("cancel"):
         uid = message.from_user.id
         task = _qr_tasks.pop(uid, None)
         if task and not task.done():
@@ -303,7 +304,7 @@ async def account_qr_cancel(message: Message, state: FSMContext):
 
 @router.message(AccountLink.password)
 async def account_password(message: Message, state: FSMContext):
-    if message.text == "Отмена":
+    if message.text in all_btn("cancel"):
         await state.clear()
         await message.answer("Отменено.", reply_markup=main_menu)
         return

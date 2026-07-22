@@ -2,8 +2,9 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 
+from utils.i18n import all_btn
 from keyboards import (
-    main_menu, cancel_kb, skip_photo_kb, skip_price_kb,
+    main_menu, cancel_kb, main_menu_kb, cancel_kb_for, skip_photo_kb, skip_price_kb,
     ads_list_kb, ad_card_kb,
 )
 from database import (
@@ -55,7 +56,7 @@ async def show_ads_list(target, telegram_id: int, edit: bool = False):
         await target.answer(text, reply_markup=kb)
 
 
-@router.message(F.text == "Мои объявления")
+@router.message(F.text.in_(all_btn("ads")))
 async def my_ads(message: Message):
     await show_ads_list(message, message.from_user.id)
 
@@ -66,7 +67,7 @@ async def ads_list_cb(callback: CallbackQuery):
     await callback.answer()
 
 
-@router.message(F.text == "Добавить объявление")
+@router.message(F.text.in_(all_btn("add_ad")))
 @router.callback_query(F.data == "ad_create")
 async def add_ad_start(event: Message | CallbackQuery, state: FSMContext):
     user = await get_or_create_user(
@@ -105,7 +106,7 @@ async def add_ad_start(event: Message | CallbackQuery, state: FSMContext):
 
 @router.message(AdCreate.text)
 async def ad_text_step(message: Message, state: FSMContext):
-    if message.text == "Отмена":
+    if message.text in all_btn("cancel"):
         await state.clear()
         await message.answer("Отменено.", reply_markup=main_menu)
         return
@@ -146,7 +147,7 @@ async def ad_photo_step(message: Message, state: FSMContext):
 
 @router.message(AdCreate.photo)
 async def ad_photo_invalid(message: Message):
-    if message.text == "Отмена":
+    if message.text in all_btn("cancel"):
         return
     await message.answer("Пришли фото или нажми «Без фото».")
 
@@ -185,7 +186,7 @@ async def ad_skip_price(callback: CallbackQuery, state: FSMContext):
 
 @router.message(AdCreate.price)
 async def ad_price_step(message: Message, state: FSMContext):
-    if message.text == "Отмена":
+    if message.text in all_btn("cancel"):
         await state.clear()
         await message.answer("Отменено.", reply_markup=main_menu)
         return
@@ -294,7 +295,7 @@ async def ad_edit_text_start(callback: CallbackQuery, state: FSMContext):
 
 @router.message(AdEdit.text)
 async def ad_edit_text_save(message: Message, state: FSMContext):
-    if message.text == "Отмена":
+    if message.text in all_btn("cancel"):
         await state.clear()
         await message.answer("Отменено.", reply_markup=main_menu)
         return
@@ -328,7 +329,7 @@ async def ad_edit_price_start(callback: CallbackQuery, state: FSMContext):
 
 @router.message(AdEdit.price)
 async def ad_edit_price_save(message: Message, state: FSMContext):
-    if message.text == "Отмена":
+    if message.text in all_btn("cancel"):
         await state.clear()
         await message.answer("Отменено.", reply_markup=main_menu)
         return

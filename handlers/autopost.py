@@ -1,6 +1,7 @@
 from aiogram import Router, F, Bot
 from aiogram.types import Message, CallbackQuery
 
+from utils.i18n import all_btn
 from keyboards import autopost_kb
 from database import (
     get_or_create_user, get_user, set_autopost_enabled,
@@ -52,7 +53,7 @@ async def build_autopost_text(telegram_id: int) -> tuple[str, bool]:
     return text, user.autopost_enabled
 
 
-@router.message(F.text == "Автопостинг")
+@router.message(F.text.in_(all_btn("autopost")))
 async def autopost_menu(message: Message):
     text, enabled = await build_autopost_text(message.from_user.id)
     await message.answer(text, reply_markup=autopost_kb(enabled))

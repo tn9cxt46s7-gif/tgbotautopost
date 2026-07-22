@@ -1,4 +1,4 @@
-"""CryptoBot (Crypto Pay) client — auto crypto payments."""
+"""CryptoBot (Crypto Pay) client — auto crypto payments in EUR."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from typing import Any
 
 import aiohttp
 
-from config import CRYPTO_BOT_TOKEN, CRYPTO_BOT_API, CRYPTO_BOT_ASSET
+from config import CRYPTO_BOT_TOKEN, CRYPTO_BOT_API, CRYPTO_BOT_ASSET, CRYPTO_BOT_FIAT
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ async def _api(method: str, **params) -> dict[str, Any]:
     url = f"{CRYPTO_BOT_API.rstrip('/')}/{method}"
     headers = {"Crypto-Pay-API-Token": CRYPTO_BOT_TOKEN}
     async with aiohttp.ClientSession() as session:
-        async with session.post(url, json=params or None, headers=headers, timeout=30) as resp:
+        async with session.post(url, json=params or None, headers=headers, timeout=20) as resp:
             data = await resp.json(content_type=None)
     if not data.get("ok"):
         err = data.get("error", data)
@@ -32,20 +32,17 @@ async def _api(method: str, **params) -> dict[str, Any]:
 
 async def create_invoice(
     *,
-    amount_rub: int,
+    amount_eur: int | float,
     description: str,
     payload: str,
     paid_btn_url: str | None = None,
 ) -> dict[str, Any]:
-    """
-    Create USDT invoice. amount_rub converted roughly via exchange rates,
-    or we pass fiat if API supports currency_type=fiat.
-    Prefer fiat RUB when supported.
-    """
+    """Create invoice priced in EUR (fiat), fallback to USDT."""
+    fiat = CRYPTO_BOT_FIAT or "EUR"
     params: dict[str, Any] = {
         "currency_type": "fiat",
-        "fiat": "RUB",
-        "amount": str(amount_rub),
+        "fiat": fiat,
+        "amount": str(amount_eur),
         "description": description[:1024],
         "payload": payload[:4096],
         "allow_comments": False,
@@ -57,16 +54,18 @@ async def create_invoice(
     try:
         return await _api("createInvoice", **params)
     except RuntimeError:
-        # Fallback: crypto asset amount (USDT ≈ amount_rub / 90 rough; better use rates)
         rates = await _api("getExchangeRates")
-        usdt_rub = None
+        usdt_eur = None
         for row in rates or []:
-            if row.get("source") == "USDT" and row.get("target") == "RUB" and row.get("is_valid"):
-                usdt_rub = float(row["rate"])
+            if row.get("source") == "USDT" and row.get("target") == fiat and row.get("is_valid"):
+                usdt_eur = float(row["rate"])
                 break
-        if not usdt_rub or usdt_rub <= 0:
-            usdt_rub = 90.0
-        amount_usdt = round(amount_rub / usdt_rub, 2)
+        if not usdt_eur or usdt_eur <= 0:
+            # rough fallback EUR≈USDT
+            usdt_eur = 1.0
+        amount_usdt = round(float(amount_eur) / usdt_eur, 2) if usdt_eur != 1.0 else round(float(amount_eur), 2)
+        if usdt_eur == 1.0:
+            amount_usdt = round(float(amount_eur), 2)
         params = {
             "asset": CRYPTO_BOT_ASSET,
             "amount": str(amount_usdt),

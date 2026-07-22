@@ -1,120 +1,61 @@
-# Как подключить оплату — подробно
+# Оплата EU / Латвия (EUR)
 
-Чтобы деньги приходили **автоматически** и подписка включалась сама, тебе нужно
-дать боту токены платёжек. Ниже — что именно прислать / куда вставить.
-
----
-
-## 1. Telegram Stars (уже работает, авто)
-
-**Что нужно:** ничего дополнительного.  
-Оплата звёздами через BotFather уже встроена.
-
-Деньги Stars приходят на баланс бота в Telegram. Вывод — по правилам Telegram.
-
-**Env:** только `BOT_TOKEN`
+Цены и реквизиты — в **евро**. Stars остаются опциональным способом.
 
 ---
 
-## 2. CryptoBot — автооплата криптой (рекомендуем)
-
-Самый простой авто-приём USDT/TON внутри Telegram.
-
-### Что сделать тебе:
-
-1. Открой [@CryptoBot](https://t.me/CryptoBot) → **Crypto Pay** → **Create App**
-2. Скопируй **API Token**
-3. Вставь в Vercel / `.env`:
+## Env (Vercel)
 
 ```env
-CRYPTO_BOT_TOKEN=12345:AA...твой_токен
+# Канал-обязательная подписка (бот должен быть админом канала)
+REQUIRED_CHANNEL=@your_channel
+# если канал приватный — ссылка-приглашение:
+REQUIRED_CHANNEL_URL=https://t.me/+xxxx
+
+# Цены EUR
+PAYMENT_EUR_WEEK=5
+PAYMENT_EUR_MONTH=12
+PAYMENT_EUR_QUARTER=29
+
+# SEPA / карта
+PAYMENT_CARD_DETAILS=IBAN: LV.. · Beneficiary: Name · Bank: Swedbank
+
+# Другие банки (Revolut / Wise / SEB …)
+PAYMENT_BANKS_OTHER=Revolut EUR · IBAN: … · Comment: order #
+
+# Крипта вручную
+PAYMENT_CRYPTO_DETAILS=USDT TRC20: …
+
+# CryptoBot авто (фиат EUR)
+CRYPTO_BOT_TOKEN=...
 CRYPTO_BOT_ASSET=USDT
+CRYPTO_BOT_FIAT=EUR
 ```
 
-4. В CryptoBot App → **Webhooks** укажи:
-
-```
-https://ТВОЙ-ПРОЕКТ.vercel.app/cryptobot-webhook
-```
-
-5. Redeploy бота
-
-Готово: клиент жмёт «CryptoBot USDT (авто)» → платит → подписка включается сама  
-(или кнопкой «Проверить оплату»).
-
-**Что прислать разработчику/себе в заметки:**  
-`CRYPTO_BOT_TOKEN=...`
+Webhook CryptoBot:
+`https://ТВОЙ-ПРОЕКТ.vercel.app/cryptobot-webhook`
 
 ---
 
-## 3. Карта (ручное подтверждение) — пока без эквайринга
+## Способы оплаты в боте
 
-Авто-карта (ЮKassa) требует ИП/ООО и договор. Пока схема:
+1. **SEPA / карта (EUR)** — заявка → «Я оплатил» → админ подтверждает  
+2. **Другие банки (EUR)** — отдельная вкладка  
+3. **CryptoBot USDT** — авто  
+4. **Крипта вручную** — заявка  
+5. **Telegram Stars** — опционально (не основная валюта)
 
-1. В env укажи реквизиты:
-
-```env
-PAYMENT_CARD_DETAILS=Сбер 2200.... · Получатель Имя Ф.
-PAYMENT_RUB_WEEK=299
-PAYMENT_RUB_MONTH=799
-PAYMENT_RUB_QUARTER=1990
-```
-
-2. Клиент переводит → «Я оплатил» → тебе в админку приходит заявка → жмёшь «Подтвердить».
-
-**Что прислать:** номер карты / СБП телефон + имя получателя + цены в ₽.
+После оплаты пользователь получает сообщение: **«Подписка куплена»** + дата.
 
 ---
 
-## 4. ЮKassa (авто карта) — что нужно для следующего апдейта
+## Языки
 
-Если хочешь **автооплату картой**, подготовь и пришли:
-
-| Данные | Где взять |
-|--------|-----------|
-| `shopId` | ЮKassa → Настройки магазина |
-| `secretKey` | ЮKassa → API-ключи |
-| URL магазина / return_url | `https://t.me/ТВОЙ_БОТ` |
-| ИП/ООО реквизиты | уже в ЮKassa |
-
-После этого можно добавить кнопку «Карта (ЮKassa)» с вебхуком `/yookassa-webhook`.
+RU / EN / LT / ET — выбор при `/start` и в меню «Язык».
 
 ---
 
-## 5. Промокоды (уже в боте)
+## Лаги
 
-По умолчанию создаются:
-
-| Код | Скидка |
-|-----|--------|
-| START20 | −20% |
-| SALE15 | −15% |
-| VIP30 | −30% (лимит 30 использований) |
-
-Клиент: Подписка → «Ввести промокод».
-
----
-
-## Чеклист env для продакшена
-
-```env
-BOT_TOKEN=
-ADMIN_IDS=
-TG_API_ID=
-TG_API_HASH=
-DB_URL=postgresql://...
-SUPPORT_USERNAME=eb_support
-CRYPTO_BOT_TOKEN=          # ← для авто-крипты
-PAYMENT_CARD_DETAILS=      # ← для ручной карты
-PAYMENT_CRYPTO_DETAILS=    # ← запасной ручной USDT
-PAYMENT_RUB_WEEK=299
-PAYMENT_RUB_MONTH=799
-PAYMENT_RUB_QUARTER=1990
-CRON_SECRET=
-```
-
----
-
-## Куда пишут клиенты
-
-`SUPPORT_USERNAME=eb_support` → https://t.me/eb_support
+Premium custom emoji выключены по умолчанию (`USE_PREMIUM_EMOJI=0`).  
+Reply-клавиатура без `icon_custom_emoji_id`.

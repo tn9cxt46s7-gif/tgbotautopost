@@ -17,6 +17,7 @@ from database import (
     list_pending_payments,
 )
 from utils.emoji import tg_emoji
+from utils.i18n import all_btn
 from utils.subscription import has_active_subscription
 from config import is_admin, PLANS, SUPPORT_USERNAME
 from states import AdminGiveSub, AdminFindUser, AdminBroadcast
@@ -89,7 +90,7 @@ async def admin_payments(callback: CallbackQuery):
         plan = PLANS.get(p.plan, {})
         await callback.message.answer(
             f"#{p.id} · {p.method} · user <code>{p.telegram_id}</code>\n"
-            f"{plan.get('title', p.plan)} · {p.amount_rub} ₽ / {p.amount_stars} ⭐",
+            f"{plan.get('title', p.plan)} · {p.amount_rub} € / {p.amount_stars} ⭐",
             reply_markup=admin_payment_kb(p.id),
         )
     await callback.answer()
@@ -182,7 +183,7 @@ async def admin_find_start(callback: CallbackQuery, state: FSMContext):
 async def admin_find_query(message: Message, state: FSMContext):
     if _deny(message):
         return
-    if message.text == "Отмена":
+    if message.text in all_btn("cancel"):
         await state.clear()
         await message.answer("Отменено.", reply_markup=main_menu)
         return
@@ -224,7 +225,7 @@ async def admin_give_from_card(callback: CallbackQuery, state: FSMContext):
 async def admin_give_uid(message: Message, state: FSMContext):
     if _deny(message):
         return
-    if message.text == "Отмена":
+    if message.text in all_btn("cancel"):
         await state.clear()
         await message.answer("Отменено.", reply_markup=main_menu)
         return
@@ -240,7 +241,7 @@ async def admin_give_uid(message: Message, state: FSMContext):
 async def admin_give_days(message: Message, state: FSMContext):
     if _deny(message):
         return
-    if message.text == "Отмена":
+    if message.text in all_btn("cancel"):
         await state.clear()
         await message.answer("Отменено.", reply_markup=main_menu)
         return
@@ -361,7 +362,7 @@ async def admin_broadcast_start(callback: CallbackQuery, state: FSMContext):
 async def admin_broadcast_msg(message: Message, state: FSMContext):
     if _deny(message):
         return
-    if message.text == "Отмена":
+    if message.text in all_btn("cancel"):
         await state.clear()
         await message.answer("Отменено.", reply_markup=main_menu)
         return

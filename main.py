@@ -17,12 +17,16 @@ from handlers.payments import router as payments_router
 from database import init_db
 from services.scheduler import start_scheduler, stop_scheduler
 from services.user_client import api_configured
+from middlewares.access import AccessMiddleware
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher(storage=MemoryStorage())
+
+dp.message.middleware(AccessMiddleware())
+dp.callback_query.middleware(AccessMiddleware())
 
 dp.include_router(user_router)
 dp.include_router(account_router)

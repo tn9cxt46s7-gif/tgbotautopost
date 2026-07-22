@@ -52,27 +52,46 @@ ADMIN_IDS: set[int] = {
 SUPPORT_USERNAME = (os.getenv("SUPPORT_USERNAME", "eb_support") or "eb_support").lstrip("@")
 SUPPORT_URL = f"https://t.me/{SUPPORT_USERNAME}"
 
-# Manual payment details (shown for card/crypto). Leave empty → «напиши в поддержку».
+# Required public channel — user must join before using the bot
+# Example: @your_channel or -1001234567890
+REQUIRED_CHANNEL = (os.getenv("REQUIRED_CHANNEL", "") or "").strip()
+REQUIRED_CHANNEL_URL = (os.getenv("REQUIRED_CHANNEL_URL", "") or "").strip() or None
+
+# EU / Latvia payment details (EUR). Leave placeholders → support.
 PAYMENT_CARD_DETAILS = os.getenv(
     "PAYMENT_CARD_DETAILS",
-    "Карта: уточни реквизиты у @eb_support",
+    "SEPA / card (EUR)\nIBAN: уточни у @eb_support\nПолучатель: уточни у @eb_support",
+)
+PAYMENT_BANKS_OTHER = os.getenv(
+    "PAYMENT_BANKS_OTHER",
+    "Другие банки / Revolut / Wise (EUR)\n"
+    "Реквизиты: уточни у @eb_support\n"
+    "В комментарии укажи номер заявки.",
 )
 PAYMENT_CRYPTO_DETAILS = os.getenv(
     "PAYMENT_CRYPTO_DETAILS",
     "USDT (TRC20): уточни кошелёк у @eb_support",
 )
-# Optional fixed RUB prices (can override via env)
-PAYMENT_RUB_WEEK = int(os.getenv("PAYMENT_RUB_WEEK", "299"))
-PAYMENT_RUB_MONTH = int(os.getenv("PAYMENT_RUB_MONTH", "799"))
-PAYMENT_RUB_QUARTER = int(os.getenv("PAYMENT_RUB_QUARTER", "1990"))
+# EUR prices (whole euros). Override via env.
+PAYMENT_EUR_WEEK = int(os.getenv("PAYMENT_EUR_WEEK", os.getenv("PAYMENT_RUB_WEEK", "5")))
+PAYMENT_EUR_MONTH = int(os.getenv("PAYMENT_EUR_MONTH", os.getenv("PAYMENT_RUB_MONTH", "12")))
+PAYMENT_EUR_QUARTER = int(os.getenv("PAYMENT_EUR_QUARTER", os.getenv("PAYMENT_RUB_QUARTER", "29")))
+# Legacy aliases (amount still stored in DB column amount_rub = EUR amount)
+PAYMENT_RUB_WEEK = PAYMENT_EUR_WEEK
+PAYMENT_RUB_MONTH = PAYMENT_EUR_MONTH
+PAYMENT_RUB_QUARTER = PAYMENT_EUR_QUARTER
 
-BOT_VERSION = "2.2.0"
+BOT_VERSION = "2.3.0"
 TRIAL_DAYS = int(os.getenv("TRIAL_DAYS", "1"))
+# Disable premium custom emoji in text (faster, less lag on clients)
+USE_PREMIUM_EMOJI = os.getenv("USE_PREMIUM_EMOJI", "0") == "1"
+DEFAULT_LANG = os.getenv("DEFAULT_LANG", "ru")
 
 # CryptoBot (Crypto Pay) — автооплата криптой
 # Токен: @CryptoBot → Crypto Pay → Create App
 CRYPTO_BOT_TOKEN = os.getenv("CRYPTO_BOT_TOKEN", "")
 CRYPTO_BOT_ASSET = os.getenv("CRYPTO_BOT_ASSET", "USDT")
+CRYPTO_BOT_FIAT = os.getenv("CRYPTO_BOT_FIAT", "EUR")
 # testnet: https://testnet-pay.crypt.bot/api  main: https://pay.crypt.bot/api
 CRYPTO_BOT_API = os.getenv(
     "CRYPTO_BOT_API",
@@ -82,25 +101,28 @@ CRYPTO_BOT_API = os.getenv(
 # Subscription expiry reminders (days before end)
 SUB_REMIND_DAYS = int(os.getenv("SUB_REMIND_DAYS", "2"))
 
-# Subscription plans (single source of truth)
+# Subscription plans — EUR primary (EU / Latvia). Stars optional pay method only.
 PLANS = {
     "week": {
         "title": "Неделя",
         "days": 7,
         "stars": 150,
-        "rub": PAYMENT_RUB_WEEK,
+        "eur": PAYMENT_EUR_WEEK,
+        "rub": PAYMENT_EUR_WEEK,  # DB column amount_rub stores EUR
     },
     "month": {
         "title": "Месяц",
         "days": 30,
         "stars": 450,
-        "rub": PAYMENT_RUB_MONTH,
+        "eur": PAYMENT_EUR_MONTH,
+        "rub": PAYMENT_EUR_MONTH,
     },
     "quarter": {
         "title": "3 месяца",
         "days": 90,
         "stars": 1100,
-        "rub": PAYMENT_RUB_QUARTER,
+        "eur": PAYMENT_EUR_QUARTER,
+        "rub": PAYMENT_EUR_QUARTER,
     },
 }
 

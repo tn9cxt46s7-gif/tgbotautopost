@@ -25,6 +25,7 @@ class User(Base):
     tg_account_name = Column(String, default=None)
     trial_used = Column(Boolean, default=False)
     last_sub_remind_at = Column(DateTime, default=None)
+    language = Column(String, default=None)  # ru / en / lt / et
     created_at = Column(DateTime, default=datetime.utcnow)
 
 

@@ -91,6 +91,20 @@ def eid(key: str) -> int:
 
 
 def tg_emoji(key: str, fallback: str | None = None) -> str:
-    """HTML tg-emoji tag for message text."""
+    """HTML tg-emoji tag for message text.
+
+    Premium custom emoji is off by default (USE_PREMIUM_EMOJI=0) — reduces client lag.
+    """
     fb = fallback or FALLBACK.get(key, "•")
+    try:
+        from config import USE_PREMIUM_EMOJI
+        if not USE_PREMIUM_EMOJI:
+            return fb
+    except Exception:
+        return fb
     return f'<tg-emoji emoji-id="{EMOJI[key]}">{fb}</tg-emoji>'
+
+
+def plain(key: str) -> str:
+    """Unicode fallback only — never premium emoji."""
+    return FALLBACK.get(key, "•")
