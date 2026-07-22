@@ -24,6 +24,7 @@ class User(Base):
     tg_phone = Column(String, default=None)
     tg_account_name = Column(String, default=None)
     trial_used = Column(Boolean, default=False)
+    last_sub_remind_at = Column(DateTime, default=None)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
@@ -67,11 +68,28 @@ class Payment(Base):
     plan = Column(String, nullable=False)
     amount_stars = Column(Integer, nullable=False)
     amount_rub = Column(Integer, default=0)
-    method = Column(String, default="stars")  # stars / card / crypto / manual
+    method = Column(String, default="stars")  # stars / card / crypto / cryptobot / manual
     status = Column(String, default="paid")  # pending / paid / cancelled
     note = Column(Text, default=None)
+    promo_code = Column(String, default=None)
+    discount_percent = Column(Integer, default=0)
+    external_id = Column(String, default=None)  # CryptoBot invoice_id etc.
+    pay_url = Column(Text, default=None)
     created_at = Column(DateTime, default=datetime.utcnow)
     paid_at = Column(DateTime, default=None)
+
+
+class PromoCode(Base):
+    __tablename__ = "promo_codes"
+    id = Column(Integer, primary_key=True)
+    code = Column(String, unique=True, nullable=False)
+    discount_percent = Column(Integer, nullable=False, default=10)
+    max_uses = Column(Integer, default=0)  # 0 = unlimited
+    uses = Column(Integer, default=0)
+    active = Column(Boolean, default=True)
+    plan_key = Column(String, default=None)  # None = any plan
+    expires_at = Column(DateTime, default=None)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 
 class PostLog(Base):

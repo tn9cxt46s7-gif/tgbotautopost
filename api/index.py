@@ -178,6 +178,37 @@ async def cron_autopost(
 
     await ensure_db()
     from services.poster import run_posting_cycle
+    from services.reminders import run_subscription_reminders
 
     result = await run_posting_cycle(bot)
-    return {"ok": True, "ran": "posting_cycle", **(result or {})}
+    reminded = await run_subscription_reminders(bot)
+    return {"ok": True, "ran": "posting_cycle", "reminded": reminded, **(result or {})}
+
+
+@app.post("/cryptobot-webhook")
+async def cryptobot_webhook(request: Request):
+    """
+    Crypto Pay webhook. In @CryptoBot app set URL:
+    https://YOUR.vercel.app/cryptobot-webhook
+    """
+    if not BOT_TOKEN or bot is None:
+        raise HTTPException(500, "BOT_TOKEN not set")
+    await ensure_db()
+    data = await request.json()
+    # Formats vary: {update_type, payload: invoice} or {invoice}
+    update_type = data.get("update_type") or data.get("type")
+    invoice = data.get("payload") if isinstance(data.get("payload"), dict) else data.get("invoice")
+    if update_type and update_type != "invoice_paid" and not (invoice and invoice.get("status") == "paid"):
+        # Sometimes body IS the invoice
+        if data.get("status") == "paid" and data.get("invoice_id"):
+            invoice = data
+        else:
+            return {"ok": True, "ignored": True}
+    if not invoice:
+        invoice = data if data.get("status") == "paid" else None
+    if not invoice:
+        return {"ok": True, "ignored": True}
+
+    from handlers.payments import activate_from_cryptobot_webhook
+    activated = await activate_from_cryptobot_webhook(bot, invoice)
+    return {"ok": True, "activated": activated}

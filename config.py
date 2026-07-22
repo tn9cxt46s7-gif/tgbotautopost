@@ -66,8 +66,21 @@ PAYMENT_RUB_WEEK = int(os.getenv("PAYMENT_RUB_WEEK", "299"))
 PAYMENT_RUB_MONTH = int(os.getenv("PAYMENT_RUB_MONTH", "799"))
 PAYMENT_RUB_QUARTER = int(os.getenv("PAYMENT_RUB_QUARTER", "1990"))
 
-BOT_VERSION = "2.1.0"
+BOT_VERSION = "2.2.0"
 TRIAL_DAYS = int(os.getenv("TRIAL_DAYS", "1"))
+
+# CryptoBot (Crypto Pay) — автооплата криптой
+# Токен: @CryptoBot → Crypto Pay → Create App
+CRYPTO_BOT_TOKEN = os.getenv("CRYPTO_BOT_TOKEN", "")
+CRYPTO_BOT_ASSET = os.getenv("CRYPTO_BOT_ASSET", "USDT")
+# testnet: https://testnet-pay.crypt.bot/api  main: https://pay.crypt.bot/api
+CRYPTO_BOT_API = os.getenv(
+    "CRYPTO_BOT_API",
+    "https://pay.crypt.bot/api",
+)
+
+# Subscription expiry reminders (days before end)
+SUB_REMIND_DAYS = int(os.getenv("SUB_REMIND_DAYS", "2"))
 
 # Subscription plans (single source of truth)
 PLANS = {

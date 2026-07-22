@@ -139,12 +139,43 @@ async def help_guide(message: Message):
         "1. Купи подписку или возьми пробный день (Профиль)\n"
         "2. «Мой аккаунт» — подключи Telegram (номер на Vercel / QR на сервере)\n"
         "3. «Мои группы» — выбери барахолки (ты должен быть участником)\n"
-        "4. «Добавить объявление» — текст + фото + цена\n"
+        "4. «Добавить объявление» или «Шаблоны»\n"
         "5. «Автопостинг» → Запустить / Запостить сейчас\n\n"
         f"Интервал минимум {MIN_INTERVAL_MINUTES} мин — так безопаснее для аккаунта.\n"
+        f"Промокоды: START20 (−20%), SALE15, VIP30\n"
         f"Саппорт: @{SUPPORT_USERNAME}\n\n"
         + safety_disclaimer()
     )
+
+
+@router.message(F.text == "Шаблоны")
+async def show_templates(message: Message):
+    from utils.templates import TEMPLATES
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+    rows = [
+        [InlineKeyboardButton(text=t["title"], callback_data=f"tpl_{key}")]
+        for key, t in TEMPLATES.items()
+    ]
+    await message.answer(
+        f"{tg_emoji('ADS')} <b>Шаблоны объявлений</b>\n"
+        "Выбери нишу — получишь текст, который можно сразу править:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=rows),
+    )
+
+
+@router.callback_query(F.data.startswith("tpl_"))
+async def send_template(callback: CallbackQuery):
+    from utils.templates import TEMPLATES
+    key = callback.data.removeprefix("tpl_")
+    t = TEMPLATES.get(key)
+    if not t:
+        await callback.answer("Нет шаблона", show_alert=True)
+        return
+    await callback.message.answer(
+        f"{t['title']}\n\n<code>{t['text']}</code>\n\n"
+        "Скопируй → «Добавить объявление» → вставь и поправь."
+    )
+    await callback.answer()
 
 
 @router.callback_query(F.data == "ref_menu")

@@ -35,6 +35,7 @@ _MIGRATIONS = [
     ("users", "tg_phone", "VARCHAR"),
     ("users", "tg_account_name", "VARCHAR"),
     ("users", "trial_used", "BOOLEAN DEFAULT FALSE"),
+    ("users", "last_sub_remind_at", "TIMESTAMP"),
     # ads
     ("ads", "title", "VARCHAR"),
     ("ads", "price", "VARCHAR"),
@@ -60,6 +61,10 @@ _MIGRATIONS = [
     ("payments", "status", "VARCHAR DEFAULT 'paid'"),
     ("payments", "note", "TEXT"),
     ("payments", "paid_at", "TIMESTAMP"),
+    ("payments", "promo_code", "VARCHAR"),
+    ("payments", "discount_percent", "INTEGER DEFAULT 0"),
+    ("payments", "external_id", "VARCHAR"),
+    ("payments", "pay_url", "TEXT"),
 ]
 
 
@@ -112,10 +117,24 @@ async def migrate_schema(conn):
 
 
 async def init_db():
-    from models import User, Ad, TargetGroup, Payment, PostLog, SupportTicket  # noqa: F401
+    from models import User, Ad, TargetGroup, Payment, PostLog, SupportTicket, PromoCode  # noqa: F401
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         await migrate_schema(conn)
+    await seed_default_promos()
+
+
+async def seed_default_promos():
+    """Create starter promo codes if missing."""
+    defaults = [
+        ("START20", 20, 100),
+        ("SALE15", 15, 0),
+        ("VIP30", 30, 30),
+    ]
+    for code, pct, max_uses in defaults:
+        existing = await get_promo(code)
+        if not existing:
+            await create_promo(code, pct, max_uses=max_uses)
 
 
 
@@ -339,6 +358,10 @@ async def save_payment(
     amount_rub: int = 0,
     status: str = "paid",
     note: str | None = None,
+    promo_code: str | None = None,
+    discount_percent: int = 0,
+    external_id: str | None = None,
+    pay_url: str | None = None,
 ):
     from models import Payment
     async with AsyncSession() as session:
@@ -350,6 +373,10 @@ async def save_payment(
             method=method,
             status=status,
             note=note,
+            promo_code=promo_code,
+            discount_percent=discount_percent or 0,
+            external_id=external_id,
+            pay_url=pay_url,
             paid_at=datetime.utcnow() if status == "paid" else None,
         )
         session.add(payment)
@@ -364,6 +391,12 @@ async def create_pending_payment(
     amount_stars: int,
     amount_rub: int,
     method: str,
+    *,
+    promo_code: str | None = None,
+    discount_percent: int = 0,
+    external_id: str | None = None,
+    pay_url: str | None = None,
+    note: str | None = None,
 ):
     return await save_payment(
         telegram_id,
@@ -372,6 +405,11 @@ async def create_pending_payment(
         method=method,
         amount_rub=amount_rub,
         status="pending",
+        promo_code=promo_code,
+        discount_percent=discount_percent,
+        external_id=external_id,
+        pay_url=pay_url,
+        note=note,
     )
 
 
@@ -380,6 +418,30 @@ async def get_payment(payment_id: int):
     async with AsyncSession() as session:
         result = await session.execute(select(Payment).where(Payment.id == payment_id))
         return result.scalar_one_or_none()
+
+
+async def get_payment_by_external_id(external_id: str):
+    from models import Payment
+    async with AsyncSession() as session:
+        result = await session.execute(
+            select(Payment).where(Payment.external_id == str(external_id))
+        )
+        return result.scalar_one_or_none()
+
+
+async def update_payment(payment_id: int, **kwargs):
+    from models import Payment
+    async with AsyncSession() as session:
+        result = await session.execute(select(Payment).where(Payment.id == payment_id))
+        payment = result.scalar_one_or_none()
+        if not payment:
+            return None
+        for k, v in kwargs.items():
+            if hasattr(payment, k):
+                setattr(payment, k, v)
+        await session.commit()
+        await session.refresh(payment)
+        return payment
 
 
 async def mark_payment_paid(payment_id: int):
@@ -431,6 +493,116 @@ async def mark_trial_used(telegram_id: int):
         user.trial_used = True
         await session.commit()
         await session.refresh(user)
+        return user
+
+
+async def get_promo(code: str):
+    from models import PromoCode
+    async with AsyncSession() as session:
+        result = await session.execute(
+            select(PromoCode).where(PromoCode.code == code.upper().strip())
+        )
+        return result.scalar_one_or_none()
+
+
+async def create_promo(
+    code: str,
+    discount_percent: int,
+    *,
+    max_uses: int = 0,
+    plan_key: str | None = None,
+    expires_at: datetime | None = None,
+):
+    from models import PromoCode
+    async with AsyncSession() as session:
+        promo = PromoCode(
+            code=code.upper().strip(),
+            discount_percent=discount_percent,
+            max_uses=max_uses,
+            plan_key=plan_key,
+            expires_at=expires_at,
+            active=True,
+        )
+        session.add(promo)
+        await session.commit()
+        await session.refresh(promo)
+        return promo
+
+
+async def list_promos(limit: int = 50):
+    from models import PromoCode
+    async with AsyncSession() as session:
+        result = await session.execute(
+            select(PromoCode).order_by(desc(PromoCode.created_at)).limit(limit)
+        )
+        return list(result.scalars().all())
+
+
+async def use_promo(code: str) -> bool:
+    from models import PromoCode
+    async with AsyncSession() as session:
+        result = await session.execute(
+            select(PromoCode).where(PromoCode.code == code.upper().strip())
+        )
+        promo = result.scalar_one_or_none()
+        if not promo or not promo.active:
+            return False
+        promo.uses = (promo.uses or 0) + 1
+        if promo.max_uses and promo.uses >= promo.max_uses:
+            promo.active = False
+        await session.commit()
+        return True
+
+
+def promo_is_valid(promo, plan_key: str | None = None) -> tuple[bool, str]:
+    if not promo or not promo.active:
+        return False, "Промокод не найден или выключен"
+    if promo.expires_at and promo.expires_at < datetime.utcnow():
+        return False, "Промокод истёк"
+    if promo.max_uses and (promo.uses or 0) >= promo.max_uses:
+        return False, "Лимит использований исчерпан"
+    if promo.plan_key and plan_key and promo.plan_key != plan_key:
+        return False, f"Промокод только для плана «{promo.plan_key}»"
+    return True, "ok"
+
+
+def apply_discount(amount: int, percent: int) -> int:
+    if percent <= 0:
+        return amount
+    return max(1, int(round(amount * (100 - percent) / 100)))
+
+
+async def users_needing_sub_reminder(within_days: int = 2):
+    """Active subscribers ending within N days, not reminded today."""
+    from models import User
+    now = datetime.utcnow()
+    until = now + timedelta(days=within_days)
+    day_start = datetime(now.year, now.month, now.day)
+    async with AsyncSession() as session:
+        result = await session.execute(
+            select(User).where(
+                User.subscription_end.isnot(None),
+                User.subscription_end > now,
+                User.subscription_end <= until,
+                User.is_blocked == False,  # noqa: E712
+                or_(
+                    User.last_sub_remind_at.is_(None),
+                    User.last_sub_remind_at < day_start,
+                ),
+            )
+        )
+        return list(result.scalars().all())
+
+
+async def mark_sub_reminded(telegram_id: int):
+    from models import User
+    async with AsyncSession() as session:
+        result = await session.execute(select(User).where(User.telegram_id == telegram_id))
+        user = result.scalar_one_or_none()
+        if not user:
+            return None
+        user.last_sub_remind_at = datetime.utcnow()
+        await session.commit()
         return user
 
 

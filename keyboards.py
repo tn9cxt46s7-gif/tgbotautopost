@@ -31,9 +31,10 @@ main_menu = ReplyKeyboardMarkup(
         ],
         [
             KeyboardButton(text="Инструкция", icon_custom_emoji_id=eid("SUPPORT")),
-            KeyboardButton(text="Настройки", icon_custom_emoji_id=eid("SETTINGS")),
+            KeyboardButton(text="Шаблоны", icon_custom_emoji_id=eid("ADS")),
         ],
         [
+            KeyboardButton(text="Настройки", icon_custom_emoji_id=eid("SETTINGS")),
             KeyboardButton(text="Поддержка", icon_custom_emoji_id=eid("SUPPORT")),
         ],
     ],
@@ -150,7 +151,7 @@ back_to_menu_kb = InlineKeyboardMarkup(inline_keyboard=[
 ])
 
 
-def subscription_plans_kb(plans: dict) -> InlineKeyboardMarkup:
+def subscription_plans_kb(plans: dict, show_promo: bool = False) -> InlineKeyboardMarkup:
     rows = []
     for key, plan in plans.items():
         rub = plan.get("rub")
@@ -162,15 +163,29 @@ def subscription_plans_kb(plans: dict) -> InlineKeyboardMarkup:
             callback_data=f"plan_{key}",
             icon_custom_emoji_id=eid("SUB"),
         )])
+    if show_promo:
+        rows.append([InlineKeyboardButton(
+            text="🎟 Ввести промокод",
+            callback_data="promo_enter",
+            icon_custom_emoji_id=eid("FIRE"),
+        )])
     rows.append([InlineKeyboardButton(text="Назад", callback_data="back_to_profile", icon_custom_emoji_id=eid("BACK"))])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def payment_method_kb(plan_key: str) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Telegram Stars ⭐", callback_data=f"pay_stars_{plan_key}", icon_custom_emoji_id=eid("MONEY"))],
+def payment_method_kb(plan_key: str, cryptobot: bool = False) -> InlineKeyboardMarkup:
+    rows = [
+        [InlineKeyboardButton(text="Telegram Stars ⭐ (авто)", callback_data=f"pay_stars_{plan_key}", icon_custom_emoji_id=eid("MONEY"))],
+    ]
+    if cryptobot:
+        rows.append([InlineKeyboardButton(
+            text="CryptoBot USDT (авто)",
+            callback_data=f"pay_cryptobot_{plan_key}",
+            icon_custom_emoji_id=eid("CRYPTO"),
+        )])
+    rows.extend([
         [InlineKeyboardButton(text="Банковская карта ₽", callback_data=f"pay_card_{plan_key}", icon_custom_emoji_id=eid("CARD"))],
-        [InlineKeyboardButton(text="Криптовалюта", callback_data=f"pay_crypto_{plan_key}", icon_custom_emoji_id=eid("CRYPTO"))],
+        [InlineKeyboardButton(text="Крипта вручную", callback_data=f"pay_crypto_{plan_key}", icon_custom_emoji_id=eid("CRYPTO"))],
         [InlineKeyboardButton(
             text=f"Support @{SUPPORT_USERNAME}",
             url=SUPPORT_URL,
@@ -178,6 +193,7 @@ def payment_method_kb(plan_key: str) -> InlineKeyboardMarkup:
         )],
         [InlineKeyboardButton(text="Назад", callback_data="sub_menu", icon_custom_emoji_id=eid("BACK"))],
     ])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def pending_payment_user_kb(payment_id: int) -> InlineKeyboardMarkup:
