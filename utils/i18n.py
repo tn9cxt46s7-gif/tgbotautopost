@@ -89,10 +89,16 @@ TEXTS = {
         "et": "✅ Kanali tellimus kinnitatud!",
     },
     "channel_no": {
-        "ru": "❌ Подписка не найдена. Подпишись и нажми «Проверить» ещё раз.",
-        "en": "❌ Not subscribed yet. Subscribe and tap Check again.",
-        "lt": "❌ Prenumerata nerasta. Prenumeruokite ir spauskite Tikrinti dar kartą.",
-        "et": "❌ Tellimust ei leitud. Telli ja vajuta uuesti Kontrolli.",
+        "ru": "❌ Подписка не найдена.\n1) Открой @autopostbottg\n2) Подпишись\n3) Снова «Проверить»",
+        "en": "❌ Not subscribed.\n1) Open @autopostbottg\n2) Subscribe\n3) Tap Check again",
+        "lt": "❌ Prenumerata nerasta.\n1) Atidaryk @autopostbottg\n2) Prenumeruok\n3) Spausk Tikrinti",
+        "et": "❌ Tellimust ei leitud.\n1) Ava @autopostbottg\n2) Telli\n3) Vajuta Kontrolli",
+    },
+    "channel_bot_admin": {
+        "ru": "⚠️ Бот не админ канала @autopostbottg.\nДобавь бота админом (право видеть подписчиков) — иначе проверка не работает.",
+        "en": "⚠️ Bot is not admin of @autopostbottg.\nAdd the bot as channel admin so it can verify members.",
+        "lt": "⚠️ Botas nėra @autopostbottg adminas.\nPridėkite botą adminu.",
+        "et": "⚠️ Bot ei ole @autopostbottg admin.\nLisa bot kanalile adminiks.",
     },
     "welcome": {
         "ru": (

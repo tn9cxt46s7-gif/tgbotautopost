@@ -18,7 +18,7 @@ from utils.emoji import tg_emoji
 from utils.subscription import has_active_subscription
 from utils.antibot import safety_disclaimer
 from utils.i18n import t, all_btn, btn, LANGS
-from utils.channel import is_subscribed, channel_configured
+from utils.channel import is_subscribed, channel_configured, check_subscription
 from services.user_client import mask_phone
 from states import UserSettings
 from config import TRIAL_DAYS, BOT_VERSION, SUPPORT_USERNAME, MIN_INTERVAL_MINUTES
@@ -129,11 +129,18 @@ async def set_lang(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data == "channel_check")
 async def channel_check(callback: CallbackQuery):
     lang = await _lang(callback.from_user.id)
-    ok = await is_subscribed(callback.bot, callback.from_user.id)
-    if not ok:
-        await callback.answer(t("channel_no", lang), show_alert=True)
+    result = await check_subscription(callback.bot, callback.from_user.id)
+
+    if not result.ok:
+        await callback.answer(t("channel_no", lang)[:180], show_alert=True)
         return
-    await callback.answer(t("channel_ok", lang), show_alert=True)
+
+    # Bot not admin: still let user through, but warn once
+    if result.reason == "bot_not_admin":
+        await callback.answer(t("channel_bot_admin", lang)[:180], show_alert=True)
+    else:
+        await callback.answer(t("channel_ok", lang), show_alert=True)
+
     try:
         await callback.message.edit_text(t("channel_ok", lang))
     except Exception:

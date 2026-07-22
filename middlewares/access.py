@@ -7,11 +7,11 @@ from typing import Any, Awaitable, Callable, Dict
 from aiogram import BaseMiddleware, Bot
 from aiogram.types import Message, CallbackQuery, TelegramObject
 
-from config import is_admin
-from database import get_user
-from utils.channel import channel_configured, is_subscribed
+from utils.channel import channel_configured, is_subscribed, check_subscription
 from utils.i18n import t
 from keyboards import channel_gate_kb, language_kb
+from config import is_admin, ADMIN_IDS
+from database import get_user
 
 # Callbacks / commands allowed without channel
 _FREE_CB_PREFIX = ("lang_", "channel_check")
@@ -85,12 +85,12 @@ class AccessMiddleware(BaseMiddleware):
 
         # Channel gate (admins bypass)
         if channel_configured() and not is_admin(user.id):
-            ok = await is_subscribed(bot, user.id)
-            if not ok:
+            result = await check_subscription(bot, user.id)
+            if not result.ok:
                 text = t("channel_required", lang)
                 kb = channel_gate_kb(lang)
                 if callback:
-                    await callback.answer(t("channel_no", lang), show_alert=True)
+                    await callback.answer(t("channel_no", lang)[:180], show_alert=True)
                     try:
                         await callback.message.edit_text(text, reply_markup=kb)
                     except Exception:
@@ -98,5 +98,6 @@ class AccessMiddleware(BaseMiddleware):
                 elif message:
                     await message.answer(text, reply_markup=kb)
                 return None
+            # bot_not_admin / soft allow — pass through
 
         return await handler(event, data)
