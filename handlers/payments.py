@@ -39,15 +39,8 @@ def _priced(plan: dict, discount: int = 0) -> tuple[int, int]:
 
 def price_list_text(discount: int = 0, promo: str | None = None, lang: str = "ru") -> str:
     crown = tg_emoji("CROWN", force=True)
-    cash = tg_emoji("CASH", force=True)
-    lines = [
-        f"{crown} <b>Premium · Latvia</b> 🇱🇻\n"
-        f"{cash} EUR\n"
-    ]
-    # keep i18n header nuance
-    header = t("price_header", lang)
-    # replace plain crown if present — header already has 👑
-    lines = [header.replace("👑", crown).replace("💎", crown)]
+    header = t("price_header", lang).replace("👑", crown).replace("💎", crown)
+    lines = [header]
     if promo and discount:
         lines.append(f"{tg_emoji('PROMO', force=True)} <code>{promo}</code>: −{discount}%\n")
     for key, plan in PLANS.items():
@@ -62,7 +55,11 @@ def price_list_text(discount: int = 0, promo: str | None = None, lang: str = "ru
             )
         else:
             lines.append(f"{icon} <b>{title}</b> — <b>{eur} €</b>")
-    auto = f"{tg_emoji('CRYPTOBOT', force=True)} CryptoBot ✅" if cryptobot_configured() else f"{tg_emoji('CRYPTOBOT', force=True)} CryptoBot"
+    auto = (
+        f"{tg_emoji('CRYPTOBOT', force=True)} CryptoBot ✅"
+        if cryptobot_configured()
+        else f"{tg_emoji('CRYPTOBOT', force=True)} CryptoBot"
+    )
     lines.append(
         f"\n{auto}\n"
         + t("pay_methods_hint", lang, support=SUPPORT_USERNAME)
