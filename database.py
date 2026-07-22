@@ -34,6 +34,7 @@ _MIGRATIONS = [
     ("users", "tg_session", "TEXT"),
     ("users", "tg_phone", "VARCHAR"),
     ("users", "tg_account_name", "VARCHAR"),
+    ("users", "trial_used", "BOOLEAN DEFAULT FALSE"),
     # ads
     ("ads", "title", "VARCHAR"),
     ("ads", "price", "VARCHAR"),
@@ -54,6 +55,11 @@ _MIGRATIONS = [
     ("target_groups", "active", "BOOLEAN DEFAULT TRUE"),
     ("target_groups", "bot_can_post", "BOOLEAN DEFAULT FALSE"),
     ("target_groups", "created_at", "TIMESTAMP"),
+    # payments
+    ("payments", "amount_rub", "INTEGER DEFAULT 0"),
+    ("payments", "status", "VARCHAR DEFAULT 'paid'"),
+    ("payments", "note", "TEXT"),
+    ("payments", "paid_at", "TIMESTAMP"),
 ]
 
 
@@ -324,12 +330,108 @@ async def get_all_telegram_ids() -> list[int]:
         return list(result.scalars().all())
 
 
-async def save_payment(telegram_id: int, plan: str, amount_stars: int, method: str = "stars"):
+async def save_payment(
+    telegram_id: int,
+    plan: str,
+    amount_stars: int,
+    method: str = "stars",
+    *,
+    amount_rub: int = 0,
+    status: str = "paid",
+    note: str | None = None,
+):
     from models import Payment
     async with AsyncSession() as session:
-        payment = Payment(telegram_id=telegram_id, plan=plan, amount_stars=amount_stars, method=method)
+        payment = Payment(
+            telegram_id=telegram_id,
+            plan=plan,
+            amount_stars=amount_stars,
+            amount_rub=amount_rub or 0,
+            method=method,
+            status=status,
+            note=note,
+            paid_at=datetime.utcnow() if status == "paid" else None,
+        )
         session.add(payment)
         await session.commit()
+        await session.refresh(payment)
+        return payment
+
+
+async def create_pending_payment(
+    telegram_id: int,
+    plan: str,
+    amount_stars: int,
+    amount_rub: int,
+    method: str,
+):
+    return await save_payment(
+        telegram_id,
+        plan,
+        amount_stars,
+        method=method,
+        amount_rub=amount_rub,
+        status="pending",
+    )
+
+
+async def get_payment(payment_id: int):
+    from models import Payment
+    async with AsyncSession() as session:
+        result = await session.execute(select(Payment).where(Payment.id == payment_id))
+        return result.scalar_one_or_none()
+
+
+async def mark_payment_paid(payment_id: int):
+    from models import Payment
+    async with AsyncSession() as session:
+        result = await session.execute(select(Payment).where(Payment.id == payment_id))
+        payment = result.scalar_one_or_none()
+        if not payment:
+            return None
+        payment.status = "paid"
+        payment.paid_at = datetime.utcnow()
+        await session.commit()
+        await session.refresh(payment)
+        return payment
+
+
+async def cancel_payment(payment_id: int):
+    from models import Payment
+    async with AsyncSession() as session:
+        result = await session.execute(select(Payment).where(Payment.id == payment_id))
+        payment = result.scalar_one_or_none()
+        if not payment:
+            return None
+        payment.status = "cancelled"
+        await session.commit()
+        await session.refresh(payment)
+        return payment
+
+
+async def list_pending_payments(limit: int = 20):
+    from models import Payment
+    async with AsyncSession() as session:
+        result = await session.execute(
+            select(Payment)
+            .where(Payment.status == "pending")
+            .order_by(desc(Payment.created_at))
+            .limit(limit)
+        )
+        return list(result.scalars().all())
+
+
+async def mark_trial_used(telegram_id: int):
+    from models import User
+    async with AsyncSession() as session:
+        result = await session.execute(select(User).where(User.telegram_id == telegram_id))
+        user = result.scalar_one_or_none()
+        if not user:
+            return None
+        user.trial_used = True
+        await session.commit()
+        await session.refresh(user)
+        return user
 
 
 # ── Ads ────────────────────────────────────────────────────────────────────

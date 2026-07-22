@@ -23,6 +23,7 @@ class User(Base):
     tg_session = Column(Text, default=None)
     tg_phone = Column(String, default=None)
     tg_account_name = Column(String, default=None)
+    trial_used = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
@@ -55,7 +56,6 @@ class TargetGroup(Base):
     cooldown_until = Column(DateTime, default=None)
     last_post_at = Column(DateTime, default=None)
     active = Column(Boolean, default=True)
-    # True if the bot itself can post (added to group as member/admin)
     bot_can_post = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -66,8 +66,12 @@ class Payment(Base):
     telegram_id = Column(BigInteger, nullable=False)
     plan = Column(String, nullable=False)
     amount_stars = Column(Integer, nullable=False)
-    method = Column(String, default="stars")
+    amount_rub = Column(Integer, default=0)
+    method = Column(String, default="stars")  # stars / card / crypto / manual
+    status = Column(String, default="paid")  # pending / paid / cancelled
+    note = Column(Text, default=None)
     created_at = Column(DateTime, default=datetime.utcnow)
+    paid_at = Column(DateTime, default=None)
 
 
 class PostLog(Base):

@@ -2,13 +2,20 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import CommandStart, CommandObject
 from aiogram.fsm.context import FSMContext
+from datetime import datetime
 
 from keyboards import main_menu, profile_menu, back_to_menu_kb, settings_kb, cancel_kb
-from database import get_or_create_user, get_user, count_referrals, update_user_settings, user_has_tg_account
+from database import (
+    get_or_create_user, get_user, count_referrals, update_user_settings,
+    user_has_tg_account, extend_subscription, mark_trial_used,
+    count_user_ok_posts_since, get_user_ads, get_user_groups,
+)
 from utils.emoji import tg_emoji
 from utils.subscription import has_active_subscription
+from utils.antibot import safety_disclaimer
 from services.user_client import mask_phone
 from states import UserSettings
+from config import TRIAL_DAYS, BOT_VERSION, SUPPORT_USERNAME, MIN_INTERVAL_MINUTES
 
 router = Router()
 
@@ -29,19 +36,21 @@ async def cmd_start(message: Message, command: CommandObject, state: FSMContext)
     )
 
     if user.is_blocked:
-        await message.answer(f"{tg_emoji('LOCK')} Аккаунт заблокирован. Напиши в поддержку, если это ошибка.")
+        await message.answer(
+            f"{tg_emoji('LOCK')} Аккаунт заблокирован.\n"
+            f"Напиши @{SUPPORT_USERNAME}."
+        )
         return
 
     await message.answer(
-        f"{tg_emoji('WAVE')} <b>Автопостинг объявлений в барахолки</b>\n\n"
-        f"{tg_emoji('USER')} Подключи свой Telegram («Мой аккаунт»)\n"
+        f"{tg_emoji('WAVE')} <b>Автопостинг в барахолки</b> · v{BOT_VERSION}\n\n"
+        f"{tg_emoji('USER')} Подключи аккаунт («Мой аккаунт»)\n"
         f"{tg_emoji('GROUPS')} Добавь барахолки\n"
         f"{tg_emoji('ADS')} Создай объявление\n"
         f"{tg_emoji('AUTO')} Включи автопостинг\n\n"
-        "Посты уходят <b>от твоего аккаунта</b> — бот в группы не заходит.\n"
-        "Есть антибан (интервалы, лимиты, вариации), но 100% защиты от бана нет: "
-        "соблюдай правила каждой барахолки.\n\n"
-        "Начни с подписки 👇",
+        "Посты идут <b>от твоего аккаунта</b>. Бот в группы не заходит.\n"
+        f"Есть пробный день в профиле · саппорт @{SUPPORT_USERNAME}\n\n"
+        "Меню ниже 👇",
         reply_markup=main_menu,
     )
 
@@ -52,7 +61,10 @@ async def build_profile_text(telegram_id: int, username: str | None) -> str:
         user = await get_or_create_user(telegram_id, username)
 
     if has_active_subscription(user):
-        sub_status = f"{tg_emoji('OK')} активна до {user.subscription_end.strftime('%d.%m.%Y')} ({user.plan or '—'})"
+        sub_status = (
+            f"{tg_emoji('OK')} активна до {user.subscription_end.strftime('%d.%m.%Y')} "
+            f"({user.plan or '—'})"
+        )
     else:
         sub_status = f"{tg_emoji('WARN')} не активна"
 
@@ -63,13 +75,20 @@ async def build_profile_text(telegram_id: int, username: str | None) -> str:
     else:
         acc = f"{tg_emoji('WARN')} не привязан"
 
+    day_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    posts_today = await count_user_ok_posts_since(user.id, day_start)
+    ads = await get_user_ads(user.id)
+    groups = await get_user_groups(user.id)
+
     return (
-        f"{tg_emoji('PROFILE')} <b>Твой профиль</b>\n\n"
+        f"{tg_emoji('PROFILE')} <b>Твой профиль</b> · v{BOT_VERSION}\n\n"
         f"{tg_emoji('ID')} ID: <code>{telegram_id}</code>\n"
         f"{tg_emoji('USER')} Username: @{username or '—'}\n"
         f"{tg_emoji('LINK')} Аккаунт: {acc}\n"
         f"{tg_emoji('SUB')} Подписка: {sub_status}\n"
         f"{tg_emoji('AUTO')} Автопостинг: <b>{ap}</b>\n"
+        f"{tg_emoji('ADS')} Объявлений: <b>{len(ads)}</b> · групп: <b>{len(groups)}</b>\n"
+        f"{tg_emoji('FIRE')} Постов сегодня: <b>{posts_today}</b>\n"
         f"{tg_emoji('PEOPLE')} Приглашено друзей: <b>{refs}</b>\n"
     )
 
@@ -85,6 +104,47 @@ async def back_to_profile(callback: CallbackQuery):
     text = await build_profile_text(callback.from_user.id, callback.from_user.username)
     await callback.message.edit_text(text, reply_markup=profile_menu)
     await callback.answer()
+
+
+@router.callback_query(F.data == "trial_start")
+async def trial_start(callback: CallbackQuery):
+    user = await get_or_create_user(callback.from_user.id, callback.from_user.username)
+    if has_active_subscription(user):
+        await callback.answer("Подписка уже активна", show_alert=True)
+        return
+    if getattr(user, "trial_used", False):
+        await callback.answer("Пробный день уже использован", show_alert=True)
+        return
+    await extend_subscription(callback.from_user.id, "trial", TRIAL_DAYS)
+    await mark_trial_used(callback.from_user.id)
+    await callback.answer("Пробный день активирован!", show_alert=True)
+    text = await build_profile_text(callback.from_user.id, callback.from_user.username)
+    try:
+        await callback.message.edit_text(text, reply_markup=profile_menu)
+    except Exception:
+        pass
+    await callback.message.answer(
+        f"{tg_emoji('OK')} Пробный день на {TRIAL_DAYS} дн. активен.\n"
+        "Лимит: 1 объявление, 2 группы.\n"
+        "1) Мой аккаунт → подключи\n"
+        "2) Добавь барахолки\n"
+        "3) Создай объявление и включи автопостинг"
+    )
+
+
+@router.message(F.text == "Инструкция")
+async def help_guide(message: Message):
+    await message.answer(
+        f"{tg_emoji('SUPPORT')} <b>Инструкция · v{BOT_VERSION}</b>\n\n"
+        "1. Купи подписку или возьми пробный день (Профиль)\n"
+        "2. «Мой аккаунт» — подключи Telegram (номер на Vercel / QR на сервере)\n"
+        "3. «Мои группы» — выбери барахолки (ты должен быть участником)\n"
+        "4. «Добавить объявление» — текст + фото + цена\n"
+        "5. «Автопостинг» → Запустить / Запостить сейчас\n\n"
+        f"Интервал минимум {MIN_INTERVAL_MINUTES} мин — так безопаснее для аккаунта.\n"
+        f"Саппорт: @{SUPPORT_USERNAME}\n\n"
+        + safety_disclaimer()
+    )
 
 
 @router.callback_query(F.data == "ref_menu")
@@ -113,7 +173,7 @@ async def referral_menu_from_reply(message: Message):
     text = (
         f"{tg_emoji('REF')} <b>Реферальная программа</b>\n\n"
         "Приглашай друзей по своей ссылке — и получай "
-        "<b>+3 дня подписки</b> за каждого, кто оплатит план.\n\n"
+        "<b>+3 дня подписки</b> за каждого, кто оплатил план.\n\n"
         f"{tg_emoji('PEOPLE')} Уже приглашено: <b>{refs}</b>\n\n"
         f"Твоя ссылка:\n<code>{link}</code>"
     )
@@ -129,7 +189,7 @@ async def settings_menu(message: Message):
         f"{tg_emoji('SETTINGS')} <b>Настройки</b>\n\n"
         f"{tg_emoji('CLOCK')} Интервал по умолчанию: <b>{user.default_interval}</b> мин\n"
         f"Тихие часы (UTC): <b>{user.quiet_hours_start:02d}:00–{user.quiet_hours_end:02d}:00</b>\n\n"
-        "В тихие часы бот не постит в группы."
+        "В тихие часы посты не уходят в группы."
     )
     await message.answer(text, reply_markup=settings_kb)
 

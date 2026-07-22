@@ -298,6 +298,11 @@ async def ad_edit_text_save(message: Message, state: FSMContext):
         await state.clear()
         await message.answer("Отменено.", reply_markup=main_menu)
         return
+    text = (message.text or "").strip()
+    risk = validate_ad_text(text)
+    if risk:
+        await message.answer(f"{tg_emoji('WARN')} {risk}")
+        return
     data = await state.get_data()
     ad_id = data["edit_ad_id"]
     user = await get_user(message.from_user.id)
@@ -306,8 +311,8 @@ async def ad_edit_text_save(message: Message, state: FSMContext):
         await state.clear()
         await message.answer("Не найдено.", reply_markup=main_menu)
         return
-    title = message.text.strip().split("\n")[0][:80]
-    await update_ad(ad_id, text=message.text.strip(), title=title)
+    title = text.split("\n")[0][:80]
+    await update_ad(ad_id, text=text, title=title)
     await state.clear()
     await message.answer(f"{tg_emoji('OK')} Текст обновлён.", reply_markup=main_menu)
 

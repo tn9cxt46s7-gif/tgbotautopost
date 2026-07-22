@@ -4,8 +4,8 @@ from aiogram.types import (
     KeyboardButtonRequestChat,
 )
 from utils.emoji import eid
+from config import SUPPORT_URL, SUPPORT_USERNAME
 
-# request_id for chat picker (returned in chat_shared)
 REQ_GROUP_ANY = 102
 
 
@@ -30,7 +30,10 @@ main_menu = ReplyKeyboardMarkup(
             KeyboardButton(text="Мой аккаунт", icon_custom_emoji_id=eid("USER")),
         ],
         [
+            KeyboardButton(text="Инструкция", icon_custom_emoji_id=eid("SUPPORT")),
             KeyboardButton(text="Настройки", icon_custom_emoji_id=eid("SETTINGS")),
+        ],
+        [
             KeyboardButton(text="Поддержка", icon_custom_emoji_id=eid("SUPPORT")),
         ],
     ],
@@ -44,7 +47,6 @@ cancel_kb = ReplyKeyboardMarkup(
 
 
 def group_pick_kb() -> ReplyKeyboardMarkup:
-    """Native Telegram chat picker — any group/supergroup, bot need not be a member."""
     return ReplyKeyboardMarkup(
         keyboard=[
             [
@@ -65,6 +67,7 @@ def group_pick_kb() -> ReplyKeyboardMarkup:
         one_time_keyboard=True,
     )
 
+
 support_exit_kb = ReplyKeyboardMarkup(
     keyboard=[[KeyboardButton(text="Завершить диалог", icon_custom_emoji_id=eid("OK"))]],
     resize_keyboard=True,
@@ -77,7 +80,28 @@ profile_menu = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="Мой аккаунт", callback_data="account_menu", icon_custom_emoji_id=eid("USER"))],
     [InlineKeyboardButton(text="Купить подписку", callback_data="sub_menu", icon_custom_emoji_id=eid("SUB"))],
     [InlineKeyboardButton(text="Реферальная программа", callback_data="ref_menu", icon_custom_emoji_id=eid("REF"))],
+    [InlineKeyboardButton(text="Пробный день", callback_data="trial_start", icon_custom_emoji_id=eid("FIRE"))],
+    [InlineKeyboardButton(
+        text=f"Support @{SUPPORT_USERNAME}",
+        url=SUPPORT_URL,
+        icon_custom_emoji_id=eid("SUPPORT"),
+    )],
 ])
+
+
+def support_menu_kb() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(
+            text=f"Написать @{SUPPORT_USERNAME}",
+            url=SUPPORT_URL,
+            icon_custom_emoji_id=eid("SUPPORT"),
+        )],
+        [InlineKeyboardButton(
+            text="Чат в боте (тикет)",
+            callback_data="support_ticket",
+            icon_custom_emoji_id=eid("TICKET"),
+        )],
+    ])
 
 
 def account_kb(linked: bool, serverless: bool = False) -> InlineKeyboardMarkup:
@@ -120,6 +144,7 @@ def account_kb(linked: bool, serverless: bool = False) -> InlineKeyboardMarkup:
     )])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
+
 back_to_menu_kb = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="Назад в профиль", callback_data="back_to_profile", icon_custom_emoji_id=eid("BACK"))],
 ])
@@ -128,8 +153,12 @@ back_to_menu_kb = InlineKeyboardMarkup(inline_keyboard=[
 def subscription_plans_kb(plans: dict) -> InlineKeyboardMarkup:
     rows = []
     for key, plan in plans.items():
+        rub = plan.get("rub")
+        label = f"{plan['title']} — {plan['stars']} ⭐"
+        if rub:
+            label += f" / {rub} ₽"
         rows.append([InlineKeyboardButton(
-            text=f"{plan['title']} — {plan['stars']} ⭐",
+            text=label,
             callback_data=f"plan_{key}",
             icon_custom_emoji_id=eid("SUB"),
         )])
@@ -139,11 +168,50 @@ def subscription_plans_kb(plans: dict) -> InlineKeyboardMarkup:
 
 def payment_method_kb(plan_key: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Telegram Stars", callback_data=f"pay_stars_{plan_key}", icon_custom_emoji_id=eid("MONEY"))],
-        [InlineKeyboardButton(text="Банковская карта", callback_data=f"pay_card_{plan_key}", icon_custom_emoji_id=eid("CARD"))],
+        [InlineKeyboardButton(text="Telegram Stars ⭐", callback_data=f"pay_stars_{plan_key}", icon_custom_emoji_id=eid("MONEY"))],
+        [InlineKeyboardButton(text="Банковская карта ₽", callback_data=f"pay_card_{plan_key}", icon_custom_emoji_id=eid("CARD"))],
         [InlineKeyboardButton(text="Криптовалюта", callback_data=f"pay_crypto_{plan_key}", icon_custom_emoji_id=eid("CRYPTO"))],
-        [InlineKeyboardButton(text="Написать админу", callback_data="support_start", icon_custom_emoji_id=eid("SUPPORT"))],
+        [InlineKeyboardButton(
+            text=f"Support @{SUPPORT_USERNAME}",
+            url=SUPPORT_URL,
+            icon_custom_emoji_id=eid("SUPPORT"),
+        )],
         [InlineKeyboardButton(text="Назад", callback_data="sub_menu", icon_custom_emoji_id=eid("BACK"))],
+    ])
+
+
+def pending_payment_user_kb(payment_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(
+            text="Я оплатил ✅",
+            callback_data=f"pay_done_{payment_id}",
+            icon_custom_emoji_id=eid("OK"),
+        )],
+        [InlineKeyboardButton(
+            text="Отменить заявку",
+            callback_data=f"pay_cancel_{payment_id}",
+            icon_custom_emoji_id=eid("BACK"),
+        )],
+        [InlineKeyboardButton(
+            text=f"Support @{SUPPORT_USERNAME}",
+            url=SUPPORT_URL,
+            icon_custom_emoji_id=eid("SUPPORT"),
+        )],
+    ])
+
+
+def admin_payment_kb(payment_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(
+            text="Подтвердить оплату",
+            callback_data=f"adm_pay_ok_{payment_id}",
+            icon_custom_emoji_id=eid("OK"),
+        )],
+        [InlineKeyboardButton(
+            text="Отклонить",
+            callback_data=f"adm_pay_no_{payment_id}",
+            icon_custom_emoji_id=eid("LOCK"),
+        )],
     ])
 
 
@@ -245,7 +313,7 @@ def autopost_kb(enabled: bool) -> InlineKeyboardMarkup:
             icon_custom_emoji_id=eid("FIRE"),
         )],
         [btn],
-        [InlineKeyboardButton(text="Мой аккаунт (QR)", callback_data="account_menu", icon_custom_emoji_id=eid("USER"))],
+        [InlineKeyboardButton(text="Мой аккаунт", callback_data="account_menu", icon_custom_emoji_id=eid("USER"))],
         [InlineKeyboardButton(text="Мои объявления", callback_data="ads_list", icon_custom_emoji_id=eid("ADS"))],
         [InlineKeyboardButton(text="Мои группы", callback_data="groups_list", icon_custom_emoji_id=eid("GROUPS"))],
     ])
@@ -263,6 +331,7 @@ settings_kb = InlineKeyboardMarkup(inline_keyboard=[
 
 admin_menu = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text="Статистика", callback_data="admin_stats", icon_custom_emoji_id=eid("STATS"))],
+    [InlineKeyboardButton(text="Оплаты (pending)", callback_data="admin_payments", icon_custom_emoji_id=eid("MONEY"))],
     [InlineKeyboardButton(text="Пользователи", callback_data="admin_users", icon_custom_emoji_id=eid("USER"))],
     [InlineKeyboardButton(text="Найти пользователя", callback_data="admin_find", icon_custom_emoji_id=eid("SEARCH"))],
     [InlineKeyboardButton(text="Выдать подписку", callback_data="admin_give_sub", icon_custom_emoji_id=eid("SUB"))],

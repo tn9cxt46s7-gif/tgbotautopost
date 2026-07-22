@@ -6,7 +6,7 @@ from aiogram.fsm.context import FSMContext
 
 from keyboards import (
     admin_menu, admin_users_list_kb, admin_user_kb, admin_back_kb,
-    broadcast_confirm_kb, main_menu, cancel_kb,
+    broadcast_confirm_kb, main_menu, cancel_kb, admin_payment_kb,
 )
 from database import (
     list_users, count_users, count_active_subs, count_ads, count_groups,
@@ -14,10 +14,11 @@ from database import (
     set_user_blocked, extend_subscription, list_recent_ads, get_problem_groups,
     list_open_tickets, get_all_telegram_ids, get_subscribed_telegram_ids,
     update_ad, get_user_ads, get_user_groups, get_or_create_user,
+    list_pending_payments,
 )
 from utils.emoji import tg_emoji
 from utils.subscription import has_active_subscription
-from config import is_admin
+from config import is_admin, PLANS, SUPPORT_USERNAME
 from states import AdminGiveSub, AdminFindUser, AdminBroadcast
 
 router = Router()
@@ -49,6 +50,7 @@ async def admin_stats(callback: CallbackQuery):
     if _deny(callback):
         return
     since = datetime.utcnow() - timedelta(hours=24)
+    pending = await list_pending_payments(limit=100)
     text = (
         f"{tg_emoji('STATS')} <b>Статистика</b>\n\n"
         f"Пользователей: <b>{await count_users()}</b>\n"
@@ -58,8 +60,38 @@ async def admin_stats(callback: CallbackQuery):
         f"Групп: <b>{await count_groups()}</b>\n"
         f"Постов за 24ч: <b>{await count_posts_since(since)}</b>\n"
         f"Открытых тикетов: <b>{await count_open_tickets()}</b>\n"
+        f"Оплат pending: <b>{len(pending)}</b>\n"
+        f"Саппорт: @{SUPPORT_USERNAME}\n"
     )
     await callback.message.edit_text(text, reply_markup=admin_back_kb())
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_payments")
+async def admin_payments(callback: CallbackQuery):
+    if _deny(callback):
+        return
+    pending = await list_pending_payments(limit=15)
+    if not pending:
+        await callback.message.edit_text(
+            f"{tg_emoji('OK')} Нет заявок на оплату.",
+            reply_markup=admin_back_kb(),
+        )
+        await callback.answer()
+        return
+
+    await callback.message.edit_text(
+        f"{tg_emoji('MONEY')} <b>Ожидают оплаты:</b> {len(pending)}\n"
+        "Карточки заявок ниже 👇",
+        reply_markup=admin_back_kb(),
+    )
+    for p in pending:
+        plan = PLANS.get(p.plan, {})
+        await callback.message.answer(
+            f"#{p.id} · {p.method} · user <code>{p.telegram_id}</code>\n"
+            f"{plan.get('title', p.plan)} · {p.amount_rub} ₽ / {p.amount_stars} ⭐",
+            reply_markup=admin_payment_kb(p.id),
+        )
     await callback.answer()
 
 

@@ -48,9 +48,53 @@ ADMIN_IDS: set[int] = {
     int(x.strip()) for x in _raw_admins.split(",") if x.strip().isdigit()
 }
 
+# Public support contact (opens in Telegram)
+SUPPORT_USERNAME = (os.getenv("SUPPORT_USERNAME", "eb_support") or "eb_support").lstrip("@")
+SUPPORT_URL = f"https://t.me/{SUPPORT_USERNAME}"
+
+# Manual payment details (shown for card/crypto). Leave empty → «напиши в поддержку».
+PAYMENT_CARD_DETAILS = os.getenv(
+    "PAYMENT_CARD_DETAILS",
+    "Карта: уточни реквизиты у @eb_support",
+)
+PAYMENT_CRYPTO_DETAILS = os.getenv(
+    "PAYMENT_CRYPTO_DETAILS",
+    "USDT (TRC20): уточни кошелёк у @eb_support",
+)
+# Optional fixed RUB prices (can override via env)
+PAYMENT_RUB_WEEK = int(os.getenv("PAYMENT_RUB_WEEK", "299"))
+PAYMENT_RUB_MONTH = int(os.getenv("PAYMENT_RUB_MONTH", "799"))
+PAYMENT_RUB_QUARTER = int(os.getenv("PAYMENT_RUB_QUARTER", "1990"))
+
+BOT_VERSION = "2.1.0"
+TRIAL_DAYS = int(os.getenv("TRIAL_DAYS", "1"))
+
+# Subscription plans (single source of truth)
+PLANS = {
+    "week": {
+        "title": "Неделя",
+        "days": 7,
+        "stars": 150,
+        "rub": PAYMENT_RUB_WEEK,
+    },
+    "month": {
+        "title": "Месяц",
+        "days": 30,
+        "stars": 450,
+        "rub": PAYMENT_RUB_MONTH,
+    },
+    "quarter": {
+        "title": "3 месяца",
+        "days": 90,
+        "stars": 1100,
+        "rub": PAYMENT_RUB_QUARTER,
+    },
+}
+
 # Plan limits: max ads / max groups
 PLAN_LIMITS = {
     None: {"ads": 0, "groups": 0},
+    "trial": {"ads": 1, "groups": 2},
     "week": {"ads": 1, "groups": 3},
     "month": {"ads": 5, "groups": 15},
     "quarter": {"ads": 20, "groups": 50},
