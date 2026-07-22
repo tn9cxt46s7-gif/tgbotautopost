@@ -33,14 +33,15 @@ async def cmd_start(message: Message, command: CommandObject, state: FSMContext)
         return
 
     await message.answer(
-        f"{tg_emoji('WAVE')} <b>Автопостинг в барахолки и группы</b>\n\n"
-        f"{tg_emoji('GROUPS')} Добавь группы (барахолки)\n"
+        f"{tg_emoji('WAVE')} <b>Автопостинг объявлений в барахолки</b>\n\n"
+        f"{tg_emoji('USER')} Подключи свой Telegram («Мой аккаунт»)\n"
+        f"{tg_emoji('GROUPS')} Добавь барахолки\n"
         f"{tg_emoji('ADS')} Создай объявление\n"
-        f"{tg_emoji('AUTO')} «Запостить сейчас» или включи автопостинг\n\n"
-        "<b>Как уходят посты:</b>\n"
-        "• Обычная группа — добавь бота админом\n"
-        "• Барахолка без ботов — «Мой аккаунт» (на Vercel — по номеру)\n\n"
-        "Начни с подписки и «Мои группы» 👇",
+        f"{tg_emoji('AUTO')} Включи автопостинг\n\n"
+        "Посты уходят <b>от твоего аккаунта</b> — бот в группы не заходит.\n"
+        "Есть антибан (интервалы, лимиты, вариации), но 100% защиты от бана нет: "
+        "соблюдай правила каждой барахолки.\n\n"
+        "Начни с подписки 👇",
         reply_markup=main_menu,
     )
 
@@ -137,7 +138,7 @@ async def settings_menu(message: Message):
 async def set_interval_start(callback: CallbackQuery, state: FSMContext):
     await state.set_state(UserSettings.default_interval)
     await callback.message.answer(
-        f"{tg_emoji('CLOCK')} Введи интервал по умолчанию в минутах (от 30 до 1440):",
+        f"{tg_emoji('CLOCK')} Введи интервал по умолчанию в минутах (от 60 до 1440):",
         reply_markup=cancel_kb,
     )
     await callback.answer()
@@ -150,11 +151,11 @@ async def set_interval_save(message: Message, state: FSMContext):
         await message.answer("Отменено.", reply_markup=main_menu)
         return
     if not message.text or not message.text.isdigit():
-        await message.answer("Нужно число минут, например 60.")
+        await message.answer("Нужно число минут, например 90.")
         return
     minutes = int(message.text)
-    if minutes < 30 or minutes > 1440:
-        await message.answer("Диапазон: 30–1440 минут.")
+    if minutes < 60 or minutes > 1440:
+        await message.answer("Для защиты от бана: 60–1440 минут.")
         return
     await update_user_settings(message.from_user.id, default_interval=minutes)
     await state.clear()

@@ -12,6 +12,7 @@ from database import (
 )
 from utils.emoji import tg_emoji
 from utils.subscription import has_active_subscription, effective_limits
+from utils.antibot import validate_ad_text
 from states import AdCreate, AdEdit
 
 router = Router()
@@ -108,10 +109,12 @@ async def ad_text_step(message: Message, state: FSMContext):
         await state.clear()
         await message.answer("Отменено.", reply_markup=main_menu)
         return
-    if not message.text or len(message.text.strip()) < 10:
-        await message.answer("Текст слишком короткий (минимум 10 символов).")
+    text = (message.text or "").strip()
+    risk = validate_ad_text(text)
+    if risk:
+        await message.answer(f"{tg_emoji('WARN')} {risk}")
         return
-    await state.update_data(text=message.text.strip())
+    await state.update_data(text=text)
     await state.set_state(AdCreate.photo)
     await message.answer(
         f"{tg_emoji('PHOTO')} Пришли фото товара или нажми «Без фото»:",

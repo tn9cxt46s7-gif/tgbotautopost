@@ -419,10 +419,7 @@ async def delete_ad(ad_id: int) -> bool:
 
 
 async def get_active_ads_for_posting():
-    """Active ads whose owners have autopost enabled and active subscription.
-
-    Owner may post via linked Telethon session and/or bot membership in groups.
-    """
+    """Active ads — only owners with linked client account + autopost + subscription."""
     from models import Ad, User
     now = datetime.utcnow()
     async with AsyncSession() as session:
@@ -433,6 +430,7 @@ async def get_active_ads_for_posting():
                 User.is_blocked == False,  # noqa: E712
                 User.subscription_end.isnot(None),
                 User.subscription_end > now,
+                User.tg_session.isnot(None),
             )
         )
         return list(result.all())
@@ -602,6 +600,32 @@ async def count_posts_since(since: datetime) -> int:
     async with AsyncSession() as session:
         result = await session.execute(
             select(func.count()).select_from(PostLog).where(
+                PostLog.posted_at >= since,
+                PostLog.status == "ok",
+            )
+        )
+        return result.scalar() or 0
+
+
+async def count_user_ok_posts_since(user_id: int, since: datetime) -> int:
+    from models import PostLog
+    async with AsyncSession() as session:
+        result = await session.execute(
+            select(func.count()).select_from(PostLog).where(
+                PostLog.user_id == user_id,
+                PostLog.posted_at >= since,
+                PostLog.status == "ok",
+            )
+        )
+        return result.scalar() or 0
+
+
+async def count_group_ok_posts_since(group_id: int, since: datetime) -> int:
+    from models import PostLog
+    async with AsyncSession() as session:
+        result = await session.execute(
+            select(func.count()).select_from(PostLog).where(
+                PostLog.group_id == group_id,
                 PostLog.posted_at >= since,
                 PostLog.status == "ok",
             )

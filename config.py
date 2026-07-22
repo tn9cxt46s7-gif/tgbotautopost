@@ -57,20 +57,27 @@ PLAN_LIMITS = {
     "bonus": {"ads": 1, "groups": 3},
 }
 
-DEFAULT_INTERVAL_MINUTES = 60
-DEFAULT_JITTER_SECONDS = 180
+DEFAULT_INTERVAL_MINUTES = 90
+DEFAULT_JITTER_SECONDS = 300
 DEFAULT_QUIET_START = 0   # 00:00 UTC
-DEFAULT_QUIET_END = 6     # 06:00 UTC
-MAX_GROUP_FAILS = 3
-# On Vercel keep delays short so a cron/webhook fits into maxDuration
-INTER_GROUP_DELAY_MIN = 3 if IS_VERCEL else 30
-INTER_GROUP_DELAY_MAX = 8 if IS_VERCEL else 120
+DEFAULT_QUIET_END = 7     # 07:00 UTC
+MAX_GROUP_FAILS = 2
+# Absolute floors (anti-ban) — even «Запостить сейчас» cannot go below soft floor
+MIN_INTERVAL_MINUTES = 60
+FORCE_MIN_INTERVAL_MINUTES = 45  # soft floor for manual post
+MAX_POSTS_PER_GROUP_PER_DAY = int(os.getenv("MAX_POSTS_PER_GROUP_PER_DAY", "6"))
+MAX_POSTS_PER_USER_PER_DAY = int(os.getenv("MAX_POSTS_PER_USER_PER_DAY", "30"))
+# One group per serverless tick — next cron continues (safer + fits timeout)
+MAX_GROUPS_PER_TICK = 1 if IS_VERCEL else 3
+# Delays between groups (always-on). On Vercel tick posts ≤1 group, so delays matter less.
+INTER_GROUP_DELAY_MIN = 45
+INTER_GROUP_DELAY_MAX = 180
 SCHEDULER_TICK_SECONDS = 60
-GLOBAL_POST_DELAY = 0.4 if IS_VERCEL else 1.5  # seconds between any two posts
+GLOBAL_POST_DELAY = 2.0
 # Soft time budget for one posting cycle on serverless (seconds)
-# Hobby Vercel ≈ 10s maxDuration → keep budget under that
 POST_BUDGET_SECONDS = int(os.getenv("POST_BUDGET_SECONDS", "8" if IS_VERCEL else "300"))
 REFERRAL_BONUS_DAYS = 3
+FLOOD_COOLDOWN_EXTRA_MINUTES = 10
 
 
 def is_admin(telegram_id: int) -> bool:
