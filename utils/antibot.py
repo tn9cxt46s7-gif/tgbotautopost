@@ -88,7 +88,10 @@ def build_ad_variants(text: str, price: str | None, seed: int) -> str:
             rng.shuffle(rest)
         body = "\n".join([head_l] + rest)
 
-    tags = ["#продажа", "#объявление", "#барахолка", "#товар", "#срочно"]
+    tags = [
+        "#pardosana", "#sludinajums", "#baraholka", "#riga", "#latvija",
+        "#продажа", "#объявление", "#товар",
+    ]
     # Sometimes skip tag entirely (seed % 5 == 0) — less fingerprint
     tag = None if seed % 5 == 0 else tags[seed % len(tags)]
 
@@ -118,8 +121,8 @@ def build_ad_variants(text: str, price: str | None, seed: int) -> str:
 def safety_disclaimer() -> str:
     return (
         "⚠️ <b>Важно про баны</b>\n"
-        "Посты идут <b>от твоего аккаунта</b>. 100% защиты от бана нет — "
-        "решают правила каждой барахолки.\n\n"
+        "Посты идут <b>от твоего аккаунта</b> в барахолки Латвии. "
+        "100% защиты от бана нет — решают правила каждой группы.\n\n"
         "Мы снижаем риск:\n"
         "• интервал и джиттер\n"
         "• лимит постов в сутки на группу\n"
@@ -127,5 +130,5 @@ def safety_disclaimer() -> str:
         "• вариации текста\n"
         "• пауза при FloodWait\n"
         "• стоп группы после ошибок\n\n"
-        "Сам проверяй правила группы и не шли запрещённый товар."
+        "Сам проверяй правила группы (Rīga / LV marketplace) и не шли запрещённый товар."
     )

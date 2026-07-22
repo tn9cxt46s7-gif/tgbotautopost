@@ -87,8 +87,10 @@ async def show_groups(target, telegram_id: int, edit: bool = False):
     header = (
         f"{tg_emoji('GROUPS')} <b>Мои группы</b>\n"
         f"Использовано: {len(groups)}/{limits['groups']}\n\n"
-        "Выбери барахолку. Бот админом <b>не становится</b> — "
-        "объявления уходят от твоего аккаунта после подключения в «Мой аккаунт»."
+        "Нажми «➕ Добавить группу» и выбери барахолку Латвии "
+        "(Rīga, Daugavpils, marketplace LV и т.п.).\n"
+        "Бот админом <b>не становится</b> — посты от твоего аккаунта "
+        "после «Мой аккаунт»."
     )
     if not groups:
         text = header + f"\n\n{tg_emoji('EMPTY')} Группы ещё не добавлены."

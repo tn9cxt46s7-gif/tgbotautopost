@@ -1,63 +1,63 @@
-"""Ready-made ad templates for flea markets."""
+"""Ready-made ad templates for Latvian flea markets (Rīga & LV)."""
 
 TEMPLATES = {
     "phone": {
-        "title": "📱 Телефон / гаджет",
+        "title": "📱 Telefonas / gadžets",
         "text": (
-            "Продаю {модель}\n"
-            "Состояние: отличное / хорошее\n"
-            "Комплект: коробка, зарядка\n"
-            "Город: {город}\n"
-            "Торг уместен\n"
-            "Пишите в ЛС"
+            "Pārdodu / Продаю {модель}\n"
+            "Stāvoklis / Состояние: labs / labs kā jauns\n"
+            "Komplekts: kārba, lādētājs\n"
+            "Pilsēta: Rīga (vai Daugavpils / Liepāja)\n"
+            "Cena pēc vienošanās\n"
+            "Rakstiet PM / Пишите в ЛС"
         ),
     },
     "auto": {
-        "title": "🚗 Авто / запчасти",
+        "title": "🚗 Auto / rezerves daļas",
         "text": (
-            "Продаю {что}\n"
-            "Год / пробег: …\n"
-            "Состояние: …\n"
-            "Город: {город}\n"
-            "Цена договорная\n"
-            "Осмотр на месте"
+            "Pārdodu {что}\n"
+            "Gads / nobraukums: …\n"
+            "Stāvoklis: …\n"
+            "Pilsēta: Rīga\n"
+            "Apskate uz vietas\n"
+            "Cena: … €"
         ),
     },
     "clothes": {
-        "title": "👕 Одежда / обувь",
+        "title": "👕 Apģērbs / apavi",
         "text": (
-            "Продаю {вещь}, размер {размер}\n"
-            "Бренд: …\n"
-            "Состояние: носили аккуратно / новое\n"
-            "Город: {город}\n"
-            "Самовывоз / доставка"
+            "Pārdodu {вещь}, izmērs {размер}\n"
+            "Zīmols: …\n"
+            "Stāvoklis: labs / jauns\n"
+            "Pilsēta: Rīga\n"
+            "Pašizvešana / piegāde LV"
         ),
     },
     "home": {
-        "title": "🏠 Для дома",
+        "title": "🏠 Mājai / sadzīve",
         "text": (
-            "Продаю {товар}\n"
-            "Состояние: рабочее\n"
-            "Причина продажи: …\n"
-            "Город: {город}\n"
-            "Самовывоз сегодня"
+            "Pārdodu {товар}\n"
+            "Stāvoklis: darba kārtībā\n"
+            "Pilsēta: Rīga / Pierīga\n"
+            "Pašizvešana šodien\n"
+            "Cena: … €"
         ),
     },
     "kids": {
-        "title": "🧸 Детское",
+        "title": "🧸 Bērniem",
         "text": (
-            "Продаю {товар} для детей\n"
-            "Возраст / размер: …\n"
-            "Состояние: хорошее\n"
-            "Город: {город}\n"
-            "Торг"
+            "Pārdodu {товар} bērniem\n"
+            "Vecums / izmērs: …\n"
+            "Stāvoklis: labs\n"
+            "Pilsēta: Rīga\n"
+            "Cena pēc vienošanās"
         ),
     },
 }
 
 
 def templates_list_text() -> str:
-    lines = ["<b>Шаблоны объявлений</b>\nВыбери нишу — вставь и поправь под себя:\n"]
-    for key, t in TEMPLATES.items():
-        lines.append(f"• {t['title']} — /tpl_{key}" if False else f"• <b>{t['title']}</b>")
+    lines = ["<b>Šabloni LV baraholkām</b>\nIzvēlies nišu:\n"]
+    for t in TEMPLATES.values():
+        lines.append(f"• <b>{t['title']}</b>")
     return "\n".join(lines)

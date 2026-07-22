@@ -137,12 +137,13 @@ async def help_guide(message: Message):
     await message.answer(
         f"{tg_emoji('SUPPORT')} <b>Инструкция · v{BOT_VERSION}</b>\n\n"
         "1. Купи подписку или возьми пробный день (Профиль)\n"
-        "2. «Мой аккаунт» — подключи Telegram (номер на Vercel / QR на сервере)\n"
-        "3. «Мои группы» — выбери барахолки (ты должен быть участником)\n"
+        "2. «Мой аккаунт» — подключи Telegram\n"
+        "3. «Мои группы» — выбери барахолки Латвии "
+        "(Rīga, Daugavpils, Baltic Marketplace и т.п. — ты уже участник)\n"
         "4. «Добавить объявление» или «Шаблоны»\n"
         "5. «Автопостинг» → Запустить / Запостить сейчас\n\n"
-        f"Интервал минимум {MIN_INTERVAL_MINUTES} мин — так безопаснее для аккаунта.\n"
-        f"Промокоды: START20 (−20%), SALE15, VIP30\n"
+        f"Интервал минимум {MIN_INTERVAL_MINUTES} мин — безопаснее для аккаунта.\n"
+        f"Промо: START20 (−20%), SALE15, VIP30\n"
         f"Саппорт: @{SUPPORT_USERNAME}\n\n"
         + safety_disclaimer()
     )
