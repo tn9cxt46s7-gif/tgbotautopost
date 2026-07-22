@@ -81,9 +81,11 @@ def _db_kind() -> str:
 async def root():
     return {
         "status": "ok" if BOT_TOKEN else "missing BOT_TOKEN",
+        "version": "2.2.0-lv",
         "vercel": IS_VERCEL,
         "db": _db_kind(),
         "tg_api": api_configured(),
+        "cryptobot": bool(os.getenv("CRYPTO_BOT_TOKEN")),
         "hint": "Open /setup-webhook after setting env vars; use Postgres for production",
     }
 
