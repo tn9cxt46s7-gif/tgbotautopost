@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kvīts Nr. 2026-07-22/1-K</title>
+  <style>
+    :root {
+      --ink: #1a1a1a;
+      --accent: #0b3d2e;
+      --line: #222;
+      --paper: #faf9f6;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #e8e6e1;
+      color: var(--ink);
+      font-family: "Times New Roman", Times, "Liberation Serif", serif;
+      font-size: 12.5pt;
+      line-height: 1.4;
+    }
+    .print-bar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: #0b3d2e;
+      color: #fff;
+      padding: 10px 16px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: center;
+      font-family: system-ui, sans-serif;
+      font-size: 14px;
+    }
+    .print-bar button {
+      background: #fff;
+      color: #0b3d2e;
+      border: 0;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .sheet {
+      width: 210mm;
+      margin: 12mm auto;
+      padding: 16mm 18mm;
+      background: var(--paper);
+      box-shadow: 0 8px 28px rgba(0,0,0,.12);
+    }
+    .head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid var(--accent);
+      padding-bottom: 4mm;
+      margin-bottom: 6mm;
+    }
+    .head h1 {
+      margin: 0;
+      font-size: 20pt;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    .head .nr {
+      text-align: right;
+      font-size: 11pt;
+    }
+    .seller-box {
+      margin-bottom: 6mm;
+      padding: 3mm 4mm;
+      border: 1px solid var(--line);
+      background: #f3f6f4;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 4mm 0;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 2.5mm 3mm;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: #eef2ef; }
+    .right { text-align: right; }
+    .total-row td {
+      font-weight: bold;
+      font-size: 13pt;
+      background: #eef2ef;
+    }
+    .fill {
+      border-bottom: 1px dotted #666;
+      display: inline-block;
+      min-width: 40mm;
+      padding: 0 1mm;
+    }
+    .fill-wide { min-width: 65mm; }
+    .text { margin: 3mm 0; text-align: justify; }
+    .signatures {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12mm;
+      margin-top: 12mm;
+    }
+    .sig-box {
+      border-top: 1px solid var(--line);
+      padding-top: 3mm;
+      min-height: 26mm;
+    }
+    .sig-line {
+      margin-top: 10mm;
+      border-bottom: 1px solid var(--line);
+      height: 8mm;
+    }
+    .footer {
+      margin-top: 8mm;
+      font-size: 9.5pt;
+      color: #555;
+      border-top: 1px solid #ccc;
+      padding-top: 3mm;
+    }
+    .stamp-area {
+      margin-top: 6mm;
+      border: 1px dashed #999;
+      padding: 4mm;
+      text-align: center;
+      color: #777;
+      font-size: 10pt;
+    }
+    @media print {
+      body { background: #fff; }
+      .print-bar { display: none !important; }
+      .sheet { margin: 0; box-shadow: none; width: auto; padding: 12mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="print-bar">
+    <span>Kvīts — drukājiet / saglabājiet kā PDF</span>
+    <button onclick="window.print()">Drukāt / Saglabāt PDF</button>
+  </div>
+
+  <div class="sheet">
+    <div class="head">
+      <div>
+        <h1>Kvīts</h1>
+        <div>Maksājuma un Preces nodošanas apliecinājums</div>
+      </div>
+      <div class="nr">
+        <div><strong>Nr. 2026-07-22/1-K</strong></div>
+        <div>Datums: <span class="fill">____.________.2026</span></div>
+        <div>Vieta: <span class="fill">____________</span></div>
+      </div>
+    </div>
+
+    <div class="seller-box">
+      <strong>Saņēmējs (Pārdevējs):</strong> Emils Basarovs<br />
+      Personas kods: <strong>010807-21646</strong><br />
+      Adrese: <span class="fill fill-wide">____________________________________________</span><br />
+      Tālrunis: <span class="fill">____________________</span>
+    </div>
+
+    <p class="text">
+      Es, <strong>Emils Basarovs</strong>, personas kods <strong>010807-21646</strong>,
+      ar šo apliecinu, ka esmu saņēmis no Pircēja
+      <strong><span class="fill fill-wide">________________________________</span></strong>
+      (personas kods: <span class="fill">_______________</span>)
+      naudas summu:
+    </p>
+
+    <table>
+      <tr>
+        <th style="width:8%">Nr.</th>
+        <th>Prece / pakalpojums</th>
+        <th style="width:12%">Daudz.</th>
+        <th style="width:18%">Cena, EUR</th>
+        <th style="width:18%">Summa, EUR</th>
+      </tr>
+      <tr>
+        <td>1</td>
+        <td>
+          Mehāniskā tastatūra <strong>AJAZZ × NACODEX</strong>
+          (AK820 MAX tipa), magnētiskie slēdži, violeta/balta,
+          svītrkods <strong>6976412962583</strong>.
+          Lietota, vizuāli laba. Atbilstoši pirkuma–pārdevuma līgumam Nr. 2026-07-22/1.
+        </td>
+        <td class="right">1</td>
+        <td class="right">43,08</td>
+        <td class="right">43,08</td>
+      </tr>
+      <tr class="total-row">
+        <td colspan="4" class="right">Kopā saņemts</td>
+        <td class="right">43,08 EUR</td>
+      </tr>
+    </table>
+
+    <p class="text">
+      Summa vārdiem: <strong>četrdesmit trīs eiro un 08 centi</strong>.
+    </p>
+    <p class="text">
+      Maksājuma veids:
+      <label><input type="checkbox" /> skaidrā naudā</label>
+      &nbsp;
+      <label><input type="checkbox" /> bankas pārskaitījums</label>
+      &nbsp;
+      <label><input type="checkbox" /> cits: <span class="fill">____________</span></label>
+    </p>
+    <p class="text">
+      Prece nodota Pircējam: 
+      <label><input type="checkbox" /> jā, pilnā komplektācijā</label>
+      &nbsp;
+      <label><input type="checkbox" /> citādi: <span class="fill fill-wide">____________________</span></label>
+    </p>
+    <p class="text">
+      Pircējs apliecina, ka Preci ir pārbaudījis un pieņēmis bez iebildumiem
+      (ja vien zemāk nav norādīts citādi):
+      <span class="fill fill-wide">________________________________________________</span>
+    </p>
+
+    <div class="signatures">
+      <div class="sig-box">
+        <strong>PĀRDEVĒJS (naudas saņēmējs)</strong><br />
+        Emils Basarovs<br />
+        Personas kods: 010807-21646
+        <div class="sig-line"></div>
+        Paraksts / datums
+      </div>
+      <div class="sig-box">
+        <strong>PIRCĒJS (maksātājs)</strong><br />
+        Vārds, uzvārds: <span class="fill">____________________</span><br />
+        Personas kods: <span class="fill">_______________</span>
+        <div class="sig-line"></div>
+        Paraksts / datums
+      </div>
+    </div>
+
+    <div class="stamp-area">
+      Vieta zīmogam / papildu atzīmei (nav obligāti privātpersonu darījumā)
+    </div>
+
+    <div class="footer">
+      Šī kvīts ir pirkuma–pārdevuma līguma Nr. 2026-07-22/1 pielikums un apliecina
+      samaksas saņemšanu un Preces nodošanu. Saglabājiet kopiju abām pusēm.
+      Dokuments nav PVN rēķins (privātpersonu darījums).
+    </div>
+  </div>
+</body>
+</html>
