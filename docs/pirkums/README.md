@@ -2,12 +2,16 @@
 
 Официальные шаблоны для продажи клавиатуры в Латвии (частное лицо → частное лицо).
 
-## Файлы
+## Файлы (готовые к печати)
 
 | Файл | Что это |
 |------|---------|
-| [pirkuma-pardevuma-ligums.html](./pirkuma-pardevuma-ligums.html) | **Договор купли-продажи** (pirkuma–pārdevuma līgums) на латышском |
-| [kvits.html](./kvits.html) | **Квитанция / чек** (kvīts) — подтверждение оплаты и передачи |
+| **[pirkuma-pardevuma-ligums.pdf](./pirkuma-pardevuma-ligums.pdf)** | **Договор** — готовый PDF |
+| **[kvits.pdf](./kvits.pdf)** | **Квитанция / чек** — готовый PDF |
+| **[ligums-un-kvits.txt](./ligums-un-kvits.txt)** | Простой текст (открыть в любом редакторе) |
+| [pirkuma-pardevuma-ligums.html](./pirkuma-pardevuma-ligums.html) | HTML-версия договора |
+| [kvits.html](./kvits.html) | HTML-версия квитанции |
+| [generate_pdf.py](./generate_pdf.py) | Скрипт пересборки PDF |
 
 ## Данные продавца
 
