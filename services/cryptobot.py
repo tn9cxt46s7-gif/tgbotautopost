@@ -1,4 +1,4 @@
-"""CryptoBot (Crypto Pay) client — auto crypto payments in EUR."""
+"""CryptoBot (Crypto Pay) client — fast auto crypto payments."""
 
 from __future__ import annotations
 
@@ -11,9 +11,19 @@ from config import CRYPTO_BOT_TOKEN, CRYPTO_BOT_API, CRYPTO_BOT_ASSET, CRYPTO_BO
 
 logger = logging.getLogger(__name__)
 
+_TIMEOUT = aiohttp.ClientTimeout(total=8, connect=3)
+_session: aiohttp.ClientSession | None = None
+
 
 def cryptobot_configured() -> bool:
     return bool(CRYPTO_BOT_TOKEN)
+
+
+async def _get_session() -> aiohttp.ClientSession:
+    global _session
+    if _session is None or _session.closed:
+        _session = aiohttp.ClientSession(timeout=_TIMEOUT)
+    return _session
 
 
 async def _api(method: str, **params) -> dict[str, Any]:
@@ -21,9 +31,9 @@ async def _api(method: str, **params) -> dict[str, Any]:
         raise RuntimeError("CRYPTO_BOT_TOKEN not set")
     url = f"{CRYPTO_BOT_API.rstrip('/')}/{method}"
     headers = {"Crypto-Pay-API-Token": CRYPTO_BOT_TOKEN}
-    async with aiohttp.ClientSession() as session:
-        async with session.post(url, json=params or None, headers=headers, timeout=20) as resp:
-            data = await resp.json(content_type=None)
+    session = await _get_session()
+    async with session.post(url, json=params or None, headers=headers) as resp:
+        data = await resp.json(content_type=None)
     if not data.get("ok"):
         err = data.get("error", data)
         raise RuntimeError(f"CryptoBot API error: {err}")
@@ -37,47 +47,38 @@ async def create_invoice(
     payload: str,
     paid_btn_url: str | None = None,
 ) -> dict[str, Any]:
-    """Create invoice priced in EUR (fiat), fallback to USDT."""
-    fiat = CRYPTO_BOT_FIAT or "EUR"
-    params: dict[str, Any] = {
-        "currency_type": "fiat",
-        "fiat": fiat,
-        "amount": str(amount_eur),
+    """Create invoice — prefer direct USDT (1 round-trip), then fiat EUR."""
+    amount = str(round(float(amount_eur), 2))
+    base: dict[str, Any] = {
         "description": description[:1024],
         "payload": payload[:4096],
         "allow_comments": False,
         "allow_anonymous": True,
     }
     if paid_btn_url:
-        params["paid_btn_name"] = "callback"
-        params["paid_btn_url"] = paid_btn_url
+        base["paid_btn_name"] = "callback"
+        base["paid_btn_url"] = paid_btn_url
+
+    # Fast path: USDT amount ≈ EUR (no exchange-rate round-trip)
     try:
-        return await _api("createInvoice", **params)
-    except RuntimeError:
-        rates = await _api("getExchangeRates")
-        usdt_eur = None
-        for row in rates or []:
-            if row.get("source") == "USDT" and row.get("target") == fiat and row.get("is_valid"):
-                usdt_eur = float(row["rate"])
-                break
-        if not usdt_eur or usdt_eur <= 0:
-            # rough fallback EUR≈USDT
-            usdt_eur = 1.0
-        amount_usdt = round(float(amount_eur) / usdt_eur, 2) if usdt_eur != 1.0 else round(float(amount_eur), 2)
-        if usdt_eur == 1.0:
-            amount_usdt = round(float(amount_eur), 2)
-        params = {
-            "asset": CRYPTO_BOT_ASSET,
-            "amount": str(amount_usdt),
-            "description": description[:1024],
-            "payload": payload[:4096],
-            "allow_comments": False,
-            "allow_anonymous": True,
-        }
-        if paid_btn_url:
-            params["paid_btn_name"] = "callback"
-            params["paid_btn_url"] = paid_btn_url
-        return await _api("createInvoice", **params)
+        return await _api(
+            "createInvoice",
+            asset=CRYPTO_BOT_ASSET or "USDT",
+            amount=amount,
+            **base,
+        )
+    except RuntimeError as e:
+        logger.warning("CryptoBot USDT invoice failed, trying fiat: %s", e)
+
+    # Fallback: fiat EUR (single call, no rates)
+    fiat = CRYPTO_BOT_FIAT or "EUR"
+    return await _api(
+        "createInvoice",
+        currency_type="fiat",
+        fiat=fiat,
+        amount=amount,
+        **base,
+    )
 
 
 async def get_invoice(invoice_id: int | str) -> dict[str, Any] | None:

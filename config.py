@@ -82,7 +82,7 @@ PAYMENT_RUB_WEEK = PAYMENT_EUR_WEEK
 PAYMENT_RUB_MONTH = PAYMENT_EUR_MONTH
 PAYMENT_RUB_QUARTER = PAYMENT_EUR_QUARTER
 
-BOT_VERSION = "2.3.2"
+BOT_VERSION = "2.3.3"
 TRIAL_DAYS = int(os.getenv("TRIAL_DAYS", "1"))
 # Premium emoji in message text (inline button icons always use pack IDs)
 USE_PREMIUM_EMOJI = os.getenv("USE_PREMIUM_EMOJI", "1") == "1"

@@ -105,25 +105,25 @@ TEXTS = {
             "👋 <b>Автопост в барахолки Латвии</b> 🇱🇻 · v{version}\n\n"
             "Посты идут <b>от твоего аккаунта</b>. Бот в группы не заходит.\n"
             "Саппорт @{support}\n\n"
-            "Дальше — выбери подписку 👇"
+            "Меню ниже 👇 · подписка — кнопка «Подписка»"
         ),
         "en": (
             "👋 <b>Autopost to Latvia flea markets</b> 🇱🇻 · v{version}\n\n"
             "Posts go <b>from your account</b>. The bot never joins groups.\n"
             "Support @{support}\n\n"
-            "Next — pick a subscription 👇"
+            "Menu below 👇 · subscription via «Subscription»"
         ),
         "lt": (
             "👋 <b>Autopostas Latvijos turgeliuose</b> 🇱🇻 · v{version}\n\n"
             "Skelbimai eina <b>iš jūsų paskyros</b>. Botas į grupes neina.\n"
             "Pagalba @{support}\n\n"
-            "Toliau — pasirinkite prenumeratą 👇"
+            "Meniu apačioje 👇 · prenumerata — «Prenumerata»"
         ),
         "et": (
             "👋 <b>Autopost Läti kirbuturgudesse</b> 🇱🇻 · v{version}\n\n"
             "Postitused lähevad <b>sinu kontolt</b>. Bot gruppe ei liitu.\n"
             "Tugi @{support}\n\n"
-            "Järgmine — vali tellimus 👇"
+            "Menüü all 👇 · tellimus — «Tellimus»"
         ),
     },
     "blocked": {

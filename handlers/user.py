@@ -22,7 +22,6 @@ from utils.channel import is_subscribed, channel_configured, check_subscription
 from services.user_client import mask_phone
 from states import UserSettings
 from config import TRIAL_DAYS, BOT_VERSION, SUPPORT_USERNAME, MIN_INTERVAL_MINUTES
-from handlers.payments import price_list_text, _plans_kb_with_promo
 
 router = Router()
 
@@ -69,14 +68,10 @@ async def cmd_start(message: Message, command: CommandObject, state: FSMContext)
             )
             return
 
-    # 3) Welcome + mandatory subscription menu
+    # 3) Welcome + main menu (subscription is a separate button)
     await message.answer(
         t("welcome", lang, version=BOT_VERSION, support=SUPPORT_USERNAME),
         reply_markup=main_menu_kb(lang),
-    )
-    await message.answer(
-        price_list_text(0, None, lang),
-        reply_markup=_plans_kb_with_promo(lang),
     )
 
 
@@ -120,10 +115,6 @@ async def set_lang(callback: CallbackQuery, state: FSMContext):
         t("welcome", code, version=BOT_VERSION, support=SUPPORT_USERNAME),
         reply_markup=main_menu_kb(code),
     )
-    await callback.message.answer(
-        price_list_text(0, None, code),
-        reply_markup=_plans_kb_with_promo(code),
-    )
 
 
 @router.callback_query(F.data == "channel_check")
@@ -148,10 +139,6 @@ async def channel_check(callback: CallbackQuery):
     await callback.message.answer(
         t("welcome", lang, version=BOT_VERSION, support=SUPPORT_USERNAME),
         reply_markup=main_menu_kb(lang),
-    )
-    await callback.message.answer(
-        price_list_text(0, None, lang),
-        reply_markup=_plans_kb_with_promo(lang),
     )
 
 

@@ -180,21 +180,36 @@ async def pay_with_stars(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data.startswith("pay_cryptobot_"))
 async def pay_with_cryptobot(callback: CallbackQuery, state: FSMContext, bot: Bot):
+    # Instant ack — prevents Telegram "loading" spinner lag feel
     await callback.answer()
+
     if not cryptobot_configured():
         await callback.message.answer(f"CryptoBot: @{SUPPORT_USERNAME}")
         return
+
     plan_key = callback.data.removeprefix("pay_cryptobot_")
     plan = PLANS.get(plan_key)
     if not plan:
         return
-    lang = await _ulang(callback.from_user.id)
 
+    lang = await _ulang(callback.from_user.id)
     data = await state.get_data()
     discount = int(data.get("discount_percent") or 0)
     promo = data.get("promo_code")
     stars, eur = _priced(plan, discount)
     title = plan_title(plan_key, lang)
+
+    # Immediate UI feedback while invoice is created
+    wait = {
+        "ru": "⏳ Создаю счёт CryptoBot…",
+        "en": "⏳ Creating CryptoBot invoice…",
+        "lt": "⏳ Kuriu CryptoBot sąskaitą…",
+        "et": "⏳ Loon CryptoBot arvet…",
+    }.get(lang, "⏳ …")
+    try:
+        await callback.message.edit_text(wait)
+    except Exception:
+        pass
 
     payment = await create_pending_payment(
         callback.from_user.id,
@@ -206,64 +221,87 @@ async def pay_with_cryptobot(callback: CallbackQuery, state: FSMContext, bot: Bo
         discount_percent=discount,
     )
 
-    me = await bot.get_me()
+    # Cache bot username — avoid get_me on every click
+    bot_username = getattr(bot, "_cached_username", None)
+    if not bot_username:
+        me = await bot.get_me()
+        bot_username = me.username
+        setattr(bot, "_cached_username", bot_username)
+
     try:
         invoice = await create_invoice(
             amount_eur=eur,
             description=f"{title} · {plan['days']}d · #{payment.id}",
             payload=f"pay:{payment.id}:{callback.from_user.id}:{plan_key}",
-            paid_btn_url=f"https://t.me/{me.username}",
+            paid_btn_url=f"https://t.me/{bot_username}",
         )
     except Exception as e:
         await cancel_payment(payment.id)
-        await callback.message.answer(f"CryptoBot error: {e}")
+        await callback.message.edit_text(f"CryptoBot error: {e}\n@{SUPPORT_USERNAME}")
         return
 
     invoice_id = str(invoice.get("invoice_id") or invoice.get("id") or "")
-    pay_url = invoice.get("bot_invoice_url") or invoice.get("pay_url") or invoice.get("mini_app_invoice_url")
+    pay_url = (
+        invoice.get("bot_invoice_url")
+        or invoice.get("pay_url")
+        or invoice.get("mini_app_invoice_url")
+    )
+    if not pay_url:
+        await cancel_payment(payment.id)
+        await callback.message.edit_text(f"CryptoBot: no pay URL\n@{SUPPORT_USERNAME}")
+        return
+
     await update_payment(payment.id, external_id=invoice_id, pay_url=pay_url)
 
-    check_l = {"ru": "Проверить оплату", "en": "Check payment", "lt": "Tikrinti", "et": "Kontrolli"}.get(lang, "Check")
+    check_l = {
+        "ru": "Проверить оплату",
+        "en": "Check payment",
+        "lt": "Tikrinti",
+        "et": "Kontrolli",
+    }.get(lang, "Check")
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="CryptoBot ➜", url=pay_url)],
         [InlineKeyboardButton(text=check_l, callback_data=f"pay_check_{payment.id}")],
         [InlineKeyboardButton(text=f"@{SUPPORT_USERNAME}", url=SUPPORT_URL)],
+        [InlineKeyboardButton(text={"ru": "Назад", "en": "Back", "lt": "Atgal", "et": "Tagasi"}.get(lang, "Back"), callback_data="sub_menu")],
     ])
+    # Plain text (no premium emoji) — faster render on clients
     await callback.message.edit_text(
-        f"{tg_emoji('CRYPTO')} <b>CryptoBot</b>\n\n"
+        f"💎 <b>CryptoBot</b>\n\n"
         f"{title}\n"
         f"<b>{eur} €</b>"
         + (f" (−{discount}%)" if discount else "")
         + f"\n#{payment.id}\n\n"
-        "1. Pay USDT / TON\n"
-        "2. Subscription activates automatically",
+        "1. Нажми CryptoBot ➜\n"
+        "2. Оплати USDT / TON\n"
+        "3. Подписка включится сама (или «Проверить»)",
         reply_markup=kb,
     )
 
 
 @router.callback_query(F.data.startswith("pay_check_"))
 async def pay_check_cryptobot(callback: CallbackQuery, bot: Bot, state: FSMContext):
+    await callback.answer()
     payment_id = int(callback.data.removeprefix("pay_check_"))
     payment = await get_payment(payment_id)
     if not payment or payment.telegram_id != callback.from_user.id:
-        await callback.answer("—", show_alert=True)
+        await callback.message.answer("—")
         return
     if payment.status == "paid":
-        await callback.answer("✅", show_alert=True)
+        await callback.message.answer("✅")
         return
     if not payment.external_id:
-        await callback.answer("—", show_alert=True)
+        await callback.message.answer("—")
         return
     try:
         inv = await get_invoice(payment.external_id)
     except Exception as e:
-        await callback.answer(str(e)[:180], show_alert=True)
+        await callback.message.answer(str(e)[:180])
         return
     if not inv or inv.get("status") != "paid":
-        await callback.answer("…", show_alert=True)
+        await callback.message.answer("Пока не оплачено…")
         return
     await _activate_paid(bot, payment, state)
-    await callback.answer("✅", show_alert=True)
     lang = await _ulang(callback.from_user.id)
     user = await get_user(callback.from_user.id)
     until = (

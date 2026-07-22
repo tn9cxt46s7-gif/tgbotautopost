@@ -84,7 +84,7 @@ def _db_kind() -> str:
 async def root():
     return {
         "status": "ok" if BOT_TOKEN else "missing BOT_TOKEN",
-        "version": "2.3.2-eu",
+        "version": "2.3.3-eu",
         "vercel": IS_VERCEL,
         "db": _db_kind(),
         "tg_api": api_configured(),
