@@ -82,11 +82,19 @@ PAYMENT_RUB_WEEK = PAYMENT_EUR_WEEK
 PAYMENT_RUB_MONTH = PAYMENT_EUR_MONTH
 PAYMENT_RUB_QUARTER = PAYMENT_EUR_QUARTER
 
-BOT_VERSION = "2.3.3"
+BOT_VERSION = "2.3.4"
 TRIAL_DAYS = int(os.getenv("TRIAL_DAYS", "1"))
 # Premium emoji in message text (inline button icons always use pack IDs)
 USE_PREMIUM_EMOJI = os.getenv("USE_PREMIUM_EMOJI", "1") == "1"
 DEFAULT_LANG = os.getenv("DEFAULT_LANG", "ru")
+
+# Security secrets
+# Telegram webhook: set same value in setWebhook secret_token
+WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET") or os.getenv("CRON_SECRET") or ""
+# Protect /setup-webhook (defaults to CRON_SECRET / WEBHOOK_SECRET)
+SETUP_SECRET = os.getenv("SETUP_SECRET") or WEBHOOK_SECRET or ""
+# Channel check: fail closed unless CHANNEL_FAIL_OPEN=1
+CHANNEL_FAIL_OPEN = os.getenv("CHANNEL_FAIL_OPEN", "0") == "1"
 
 # CryptoBot (Crypto Pay) — автооплата криптой
 # Токен: @CryptoBot → Crypto Pay → Create App

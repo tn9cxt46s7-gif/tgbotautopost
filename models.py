@@ -26,6 +26,7 @@ class User(Base):
     trial_used = Column(Boolean, default=False)
     last_sub_remind_at = Column(DateTime, default=None)
     language = Column(String, default=None)  # ru / en / lt / et
+    referral_bonus_paid = Column(Boolean, default=False)  # once per referred user
     created_at = Column(DateTime, default=datetime.utcnow)
 
 

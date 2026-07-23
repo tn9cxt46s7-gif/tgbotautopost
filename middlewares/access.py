@@ -65,6 +65,13 @@ class AccessMiddleware(BaseMiddleware):
             return await handler(event, data)
 
         db_user = await get_user(user.id)
+        if db_user and getattr(db_user, "is_blocked", False):
+            if callback:
+                await callback.answer("blocked", show_alert=True)
+            elif message:
+                await message.answer(t("blocked", "ru", support="eb_support"))
+            return None
+
         lang = getattr(db_user, "language", None) if db_user else None
 
         # Force language first

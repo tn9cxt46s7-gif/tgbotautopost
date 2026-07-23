@@ -431,13 +431,37 @@ async def pay_user_cancel(callback: CallbackQuery):
     await callback.answer("OK")
 
 
-async def _activate_paid(bot: Bot, payment, state: FSMContext | None = None):
-    if payment.status == "paid":
+async def _give_referral_bonus(bot: Bot, user) -> None:
+    """Once-only referral bonus; never downgrades referrer's plan."""
+    if not user or not user.referrer_id:
         return
+    from database import mark_referral_bonus_paid
+    if getattr(user, "referral_bonus_paid", False):
+        return
+    newly = await mark_referral_bonus_paid(user.telegram_id)
+    if not newly:
+        return
+    try:
+        await extend_subscription(
+            user.referrer_id, "bonus", REFERRAL_BONUS_DAYS, keep_plan=True,
+        )
+        await bot.send_message(
+            user.referrer_id,
+            f"{tg_emoji('FIRE')} +{REFERRAL_BONUS_DAYS}d referral bonus",
+        )
+    except Exception:
+        pass
+
+
+async def _activate_paid(bot: Bot, payment, state: FSMContext | None = None) -> bool:
+    if payment.status != "pending":
+        return False
     plan = PLANS.get(payment.plan)
     if not plan:
-        return
-    await mark_payment_paid(payment.id)
+        return False
+    marked, transitioned = await mark_payment_paid(payment.id)
+    if not transitioned or not marked:
+        return False
     if payment.promo_code:
         await use_promo(payment.promo_code)
     user = await extend_subscription(payment.telegram_id, payment.plan, plan["days"])
@@ -457,15 +481,8 @@ async def _activate_paid(bot: Bot, payment, state: FSMContext | None = None):
         )
     except Exception:
         pass
-    if user and user.referrer_id:
-        try:
-            await extend_subscription(user.referrer_id, "bonus", REFERRAL_BONUS_DAYS)
-            await bot.send_message(
-                user.referrer_id,
-                f"{tg_emoji('FIRE')} +{REFERRAL_BONUS_DAYS}d referral bonus",
-            )
-        except Exception:
-            pass
+    await _give_referral_bonus(bot, user)
+    return True
 
 
 @router.callback_query(F.data.startswith("adm_pay_ok_"))
@@ -511,6 +528,18 @@ async def admin_reject_payment(callback: CallbackQuery, bot: Bot):
 
 @router.pre_checkout_query()
 async def process_pre_checkout(pre_checkout_query: PreCheckoutQuery):
+    payload = pre_checkout_query.invoice_payload or ""
+    parts = payload.split(":")
+    plan_key = parts[1] if len(parts) > 1 else None
+    plan = PLANS.get(plan_key)
+    if not plan:
+        await pre_checkout_query.answer(ok=False, error_message="Unknown plan")
+        return
+    discount = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 0
+    expected, _ = _priced(plan, discount)
+    if pre_checkout_query.total_amount != expected:
+        await pre_checkout_query.answer(ok=False, error_message="Amount mismatch")
+        return
     await pre_checkout_query.answer(ok=True)
 
 
@@ -529,7 +558,11 @@ async def process_successful_payment(message: Message, state: FSMContext):
         return
 
     stars_paid = message.successful_payment.total_amount
-    eur = apply_discount(plan.get("eur") or plan["rub"], discount)
+    expected, eur = _priced(plan, discount)
+    if stars_paid != expected:
+        await message.answer(f"Amount error · @{SUPPORT_USERNAME}")
+        return
+
     await save_payment(
         message.from_user.id,
         plan_key,
@@ -549,16 +582,7 @@ async def process_successful_payment(message: Message, state: FSMContext):
     await message.answer(
         t("sub_bought", lang, plan=plan_title(plan_key, lang), until=until)
     )
-
-    if user and user.referrer_id:
-        try:
-            await message.bot.send_message(
-                user.referrer_id,
-                f"{tg_emoji('FIRE')} +{REFERRAL_BONUS_DAYS}d referral bonus",
-            )
-            await extend_subscription(user.referrer_id, "bonus", REFERRAL_BONUS_DAYS)
-        except Exception:
-            pass
+    await _give_referral_bonus(message.bot, user)
 
 
 async def activate_from_cryptobot_webhook(bot: Bot, invoice: dict) -> bool:
@@ -570,7 +594,6 @@ async def activate_from_cryptobot_webhook(bot: Bot, invoice: dict) -> bool:
         payment = await get_payment(payment_id)
     else:
         payment = await get_payment_by_external_id(str(invoice.get("invoice_id")))
-    if not payment or payment.status == "paid":
+    if not payment or payment.status != "pending":
         return False
-    await _activate_paid(bot, payment)
-    return True
+    return await _activate_paid(bot, payment)

@@ -132,19 +132,23 @@ async def check_subscription(bot: Bot, user_id: int) -> SubCheck:
             return SubCheck(False, "not_member", err)
 
         if _is_bot_config_error(err):
-            # Bot cannot verify (usually not admin). Fail OPEN so users aren't stuck,
-            # but surface reason so owner can fix.
+            from config import CHANNEL_FAIL_OPEN
             logger.error(
-                "Channel gate misconfigured for %s — allowing access. "
-                "Add the bot as ADMIN of the channel. Error: %s",
+                "Channel gate misconfigured for %s. Error: %s (fail_open=%s)",
                 REQUIRED_CHANNEL,
                 err,
+                CHANNEL_FAIL_OPEN,
             )
-            return SubCheck(True, "bot_not_admin", err)
+            if CHANNEL_FAIL_OPEN:
+                return SubCheck(True, "bot_not_admin", err)
+            return SubCheck(False, "bot_not_admin", err)
 
-        # Unknown API error — fail open once rather than lock everyone
-        logger.error("Unexpected channel check error, allowing: %s", err)
-        return SubCheck(True, "error", err)
+        # Unknown API error
+        from config import CHANNEL_FAIL_OPEN
+        logger.error("Unexpected channel check error: %s (fail_open=%s)", err, CHANNEL_FAIL_OPEN)
+        if CHANNEL_FAIL_OPEN:
+            return SubCheck(True, "error", err)
+        return SubCheck(False, "error", err)
 
 
 async def is_subscribed(bot: Bot, user_id: int) -> bool:

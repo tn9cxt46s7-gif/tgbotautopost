@@ -123,10 +123,13 @@ async def channel_check(callback: CallbackQuery):
     result = await check_subscription(callback.bot, callback.from_user.id)
 
     if not result.ok:
-        await callback.answer(t("channel_no", lang)[:180], show_alert=True)
+        if result.reason == "bot_not_admin":
+            await callback.answer(t("channel_bot_admin", lang)[:180], show_alert=True)
+        else:
+            await callback.answer(t("channel_no", lang)[:180], show_alert=True)
         return
 
-    # Bot not admin: still let user through, but warn once
+    # Soft allow path (CHANNEL_FAIL_OPEN) still warns
     if result.reason == "bot_not_admin":
         await callback.answer(t("channel_bot_admin", lang)[:180], show_alert=True)
     else:

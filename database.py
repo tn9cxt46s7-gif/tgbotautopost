@@ -37,6 +37,7 @@ _MIGRATIONS = [
     ("users", "trial_used", "BOOLEAN DEFAULT FALSE"),
     ("users", "last_sub_remind_at", "TIMESTAMP"),
     ("users", "language", "VARCHAR"),
+    ("users", "referral_bonus_paid", "BOOLEAN DEFAULT FALSE"),
     # ads
     ("ads", "title", "VARCHAR"),
     ("ads", "price", "VARCHAR"),
@@ -232,8 +233,14 @@ async def count_referrals(telegram_id: int) -> int:
         return result.scalar() or 0
 
 
-async def extend_subscription(telegram_id: int, plan: str, days: int):
+async def extend_subscription(telegram_id: int, plan: str, days: int, *, keep_plan: bool = False):
+    """Extend subscription days. By default set plan; keep_plan=True only extends days."""
     from models import User
+    from config import PLAN_LIMITS
+
+    # Rank for never-downgrade when applying a new plan
+    _rank = {"trial": 0, "bonus": 1, "week": 2, "month": 3, "quarter": 4}
+
     async with AsyncSession() as session:
         result = await session.execute(select(User).where(User.telegram_id == telegram_id))
         user = result.scalar_one_or_none()
@@ -242,10 +249,29 @@ async def extend_subscription(telegram_id: int, plan: str, days: int):
         now = datetime.utcnow()
         base = user.subscription_end if user.subscription_end and user.subscription_end > now else now
         user.subscription_end = base + timedelta(days=days)
-        user.plan = plan
+        if not keep_plan:
+            old = user.plan
+            # Never downgrade a higher paid plan to bonus/trial
+            if _rank.get(plan, 0) >= _rank.get(old or "", -1) or old not in PLAN_LIMITS:
+                user.plan = plan
+            elif not old:
+                user.plan = plan
         await session.commit()
         await session.refresh(user)
         return user
+
+
+async def mark_referral_bonus_paid(telegram_id: int) -> bool:
+    """Mark that this referred user already triggered a referral bonus. Returns True if newly set."""
+    from models import User
+    async with AsyncSession() as session:
+        result = await session.execute(select(User).where(User.telegram_id == telegram_id))
+        user = result.scalar_one_or_none()
+        if not user or getattr(user, "referral_bonus_paid", False):
+            return False
+        user.referral_bonus_paid = True
+        await session.commit()
+        return True
 
 
 async def set_user_blocked(telegram_id: int, blocked: bool):
@@ -461,18 +487,24 @@ async def update_payment(payment_id: int, **kwargs):
         return payment
 
 
-async def mark_payment_paid(payment_id: int):
+async def mark_payment_paid(payment_id: int) -> tuple:
+    """Atomically pending → paid.
+
+    Returns (payment, transitioned: bool). transitioned=True only if this call
+    flipped pending→paid (safe for single activation).
+    """
     from models import Payment
+    from sqlalchemy import update as sql_update
     async with AsyncSession() as session:
-        result = await session.execute(select(Payment).where(Payment.id == payment_id))
-        payment = result.scalar_one_or_none()
-        if not payment:
-            return None
-        payment.status = "paid"
-        payment.paid_at = datetime.utcnow()
+        result = await session.execute(
+            sql_update(Payment)
+            .where(Payment.id == payment_id, Payment.status == "pending")
+            .values(status="paid", paid_at=datetime.utcnow())
+        )
         await session.commit()
-        await session.refresh(payment)
-        return payment
+        paid = await session.execute(select(Payment).where(Payment.id == payment_id))
+        payment = paid.scalar_one_or_none()
+        return payment, bool(result.rowcount)
 
 
 async def cancel_payment(payment_id: int):

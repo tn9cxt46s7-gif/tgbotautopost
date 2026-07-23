@@ -1,22 +1,20 @@
 """
 Vercel serverless entrypoint (webhook mode).
 
-Recommended setup for real posting on Vercel:
-1. Postgres (Neon / Supabase / Vercel Postgres) → DB_URL or POSTGRES_URL
-2. Env: BOT_TOKEN, ADMIN_IDS, TG_API_ID, TG_API_HASH, CRON_SECRET
-3. Open /setup-webhook once after deploy
-4. Autopost: Vercel Cron (Hobby = 1/day) OR external cron every 5–15 min → /cron?secret=...
-5. Manual: «Запостить сейчас» in the bot (works immediately)
+Env required for production:
+  BOT_TOKEN, DB_URL/POSTGRES_URL, CRON_SECRET (or WEBHOOK_SECRET),
+  CRYPTO_BOT_TOKEN, TG_API_ID, TG_API_HASH, ADMIN_IDS
 """
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# On Vercel use writable /tmp for SQLite unless DB_URL is already set
 if os.getenv("VERCEL") and not os.getenv("DB_URL") and not os.getenv("POSTGRES_URL") and not os.getenv("DATABASE_URL"):
     os.environ["DB_URL"] = "sqlite+aiosqlite:////tmp/bot.db"
 
@@ -30,7 +28,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 
-from config import BOT_TOKEN, IS_VERCEL, TG_API_ID, DB_URL
+from config import BOT_TOKEN, IS_VERCEL, TG_API_ID, DB_URL, WEBHOOK_SECRET, SETUP_SECRET
 from handlers.user import router as user_router
 from handlers.account import router as account_router
 from handlers.ads import router as ads_router
@@ -44,7 +42,6 @@ from services.user_client import api_configured
 from middlewares.access import AccessMiddleware
 
 if not BOT_TOKEN:
-    # Still create app so / returns a clear error instead of crash at import
     bot = None
     dp = None
 else:
@@ -80,24 +77,54 @@ def _db_kind() -> str:
     return "sqlite"
 
 
+def _check_setup_secret(request: Request) -> None:
+    secret = SETUP_SECRET or WEBHOOK_SECRET or os.getenv("CRON_SECRET", "")
+    if not secret:
+        raise HTTPException(403, "Set SETUP_SECRET or CRON_SECRET before /setup-webhook")
+    q = request.query_params.get("secret", "")
+    if q != secret:
+        raise HTTPException(403, "Forbidden — use /setup-webhook?secret=YOUR_SECRET")
+
+
+def _verify_telegram_secret(request: Request) -> None:
+    """Telegram sends X-Telegram-Bot-Api-Secret-Token when secret_token was set."""
+    if not WEBHOOK_SECRET:
+        # Bring-up without secret — allow but warn via response logs
+        return
+    got = request.headers.get("x-telegram-bot-api-secret-token", "")
+    if not hmac.compare_digest(got, WEBHOOK_SECRET):
+        raise HTTPException(403, "Invalid webhook secret")
+
+
+def _verify_cryptobot_signature(body: bytes, signature: str | None) -> bool:
+    """Crypto Pay: HMAC-SHA-256(body, token) hex digest in crypto-pay-api-signature."""
+    token = os.getenv("CRYPTO_BOT_TOKEN", "")
+    if not token:
+        return False
+    if not signature:
+        return False
+    digest = hmac.new(token.encode(), body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(digest, signature)
+
+
 @app.get("/")
 async def root():
     return {
         "status": "ok" if BOT_TOKEN else "missing BOT_TOKEN",
-        "version": "2.3.3-eu",
+        "version": "2.3.4-eu",
         "vercel": IS_VERCEL,
         "db": _db_kind(),
         "tg_api": api_configured(),
         "cryptobot": bool(os.getenv("CRYPTO_BOT_TOKEN")),
-        "hint": "Open /setup-webhook after setting env vars; use Postgres for production",
+        "webhook_secret": bool(WEBHOOK_SECRET),
+        "hint": "Open /setup-webhook?secret=CRON_SECRET after setting env vars",
     }
 
 
 @app.get("/health")
 async def health():
-    ok = bool(BOT_TOKEN)
     return {
-        "ok": ok,
+        "ok": bool(BOT_TOKEN),
         "bot_token": bool(BOT_TOKEN),
         "tg_api_id": bool(TG_API_ID),
         "db": _db_kind(),
@@ -107,25 +134,30 @@ async def health():
 
 @app.get("/setup-webhook")
 async def setup_webhook(request: Request):
-    """Register Telegram webhook to this Vercel deployment."""
+    """Register Telegram webhook. Requires ?secret=SETUP_SECRET|CRON_SECRET."""
     if not BOT_TOKEN or bot is None:
         raise HTTPException(500, "BOT_TOKEN not set in Vercel Environment Variables")
+    _check_setup_secret(request)
 
-    # Public URL of this deployment
     host = request.headers.get("x-forwarded-host") or request.headers.get("host")
     proto = request.headers.get("x-forwarded-proto", "https")
     base = f"{proto}://{host}"
     webhook_url = f"{base}/webhook"
 
-    await bot.set_webhook(
+    kwargs = dict(
         url=webhook_url,
         drop_pending_updates=True,
         allowed_updates=["message", "callback_query", "pre_checkout_query", "my_chat_member"],
     )
+    if WEBHOOK_SECRET:
+        kwargs["secret_token"] = WEBHOOK_SECRET
+
+    await bot.set_webhook(**kwargs)
     info = await bot.get_webhook_info()
     return {
         "ok": True,
         "webhook_url": webhook_url,
+        "secret_token_set": bool(WEBHOOK_SECRET),
         "telegram": {
             "url": info.url,
             "pending_update_count": info.pending_update_count,
@@ -135,9 +167,8 @@ async def setup_webhook(request: Request):
         "tg_api": api_configured(),
         "next": [
             "Write /start to your bot in Telegram",
-            "Add groups (add bot as admin for normal groups)",
-            "For flea markets: Мой аккаунт → по номеру",
-            "Set external cron every 5–15 min to GET /cron?secret=CRON_SECRET",
+            "Ensure bot is ADMIN of @autopostbottg",
+            "Set CRON_SECRET and external cron → /cron?secret=...",
         ],
     }
 
@@ -146,6 +177,7 @@ async def setup_webhook(request: Request):
 async def telegram_webhook(request: Request):
     if not BOT_TOKEN or bot is None or dp is None:
         raise HTTPException(500, "BOT_TOKEN not set")
+    _verify_telegram_secret(request)
 
     await ensure_db()
     data = await request.json()
@@ -160,24 +192,14 @@ async def cron_autopost(
     request: Request,
     authorization: str | None = Header(default=None),
 ):
-    """
-    Autopost tick for serverless.
-    Protect with CRON_SECRET. Call from Vercel Cron or external cron (cron-job.org).
-    Free Hobby Vercel cron is once/day — use external cron every 5–15 min for real autopost.
-    """
     if not BOT_TOKEN or bot is None:
         raise HTTPException(500, "BOT_TOKEN not set")
 
-    secret = os.getenv("CRON_SECRET", "")
+    secret = os.getenv("CRON_SECRET", "") or WEBHOOK_SECRET
+    if not secret:
+        raise HTTPException(403, "CRON_SECRET not set — refusing open cron")
     qsecret = request.query_params.get("secret", "")
-    auth_ok = False
-    if secret:
-        if authorization == f"Bearer {secret}" or qsecret == secret:
-            auth_ok = True
-    else:
-        # no secret set — allow (bring-up); set CRON_SECRET in production
-        auth_ok = True
-
+    auth_ok = authorization == f"Bearer {secret}" or qsecret == secret
     if not auth_ok:
         raise HTTPException(403, "Forbidden")
 
@@ -192,19 +214,23 @@ async def cron_autopost(
 
 @app.post("/cryptobot-webhook")
 async def cryptobot_webhook(request: Request):
-    """
-    Crypto Pay webhook. In @CryptoBot app set URL:
-    https://YOUR.vercel.app/cryptobot-webhook
-    """
+    """Crypto Pay webhook — requires valid HMAC signature when token is set."""
     if not BOT_TOKEN or bot is None:
         raise HTTPException(500, "BOT_TOKEN not set")
+
+    body = await request.body()
+    sig = request.headers.get("crypto-pay-api-signature")
+    if os.getenv("CRYPTO_BOT_TOKEN"):
+        if not _verify_cryptobot_signature(body, sig):
+            raise HTTPException(403, "Invalid CryptoBot signature")
+
     await ensure_db()
-    data = await request.json()
-    # Formats vary: {update_type, payload: invoice} or {invoice}
+    import json
+    data = json.loads(body.decode() or "{}")
+
     update_type = data.get("update_type") or data.get("type")
     invoice = data.get("payload") if isinstance(data.get("payload"), dict) else data.get("invoice")
     if update_type and update_type != "invoice_paid" and not (invoice and invoice.get("status") == "paid"):
-        # Sometimes body IS the invoice
         if data.get("status") == "paid" and data.get("invoice_id"):
             invoice = data
         else:
