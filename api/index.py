@@ -196,10 +196,16 @@ async def cron_autopost(
         raise HTTPException(500, "BOT_TOKEN not set")
 
     secret = os.getenv("CRON_SECRET", "") or WEBHOOK_SECRET
-    if not secret:
-        raise HTTPException(403, "CRON_SECRET not set — refusing open cron")
     qsecret = request.query_params.get("secret", "")
-    auth_ok = authorization == f"Bearer {secret}" or qsecret == secret
+    # Vercel Cron sends this header on scheduled invocations
+    vercel_cron = request.headers.get("x-vercel-cron") == "1"
+    auth_ok = False
+    if secret and (authorization == f"Bearer {secret}" or qsecret == secret):
+        auth_ok = True
+    if vercel_cron:
+        auth_ok = True
+    if not secret and not vercel_cron:
+        raise HTTPException(403, "CRON_SECRET not set — refusing open cron")
     if not auth_ok:
         raise HTTPException(403, "Forbidden")
 
