@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Input Cars | Krāsošanas darbi</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="apple-touch-icon" href="favicon.svg">
+    <meta name="theme-color" content="#050505">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    
+    <style>
+        :root, [data-theme="dark"] {
+            --main-font: 'Inter', sans-serif;
+            --accent-font: 'Orbitron', sans-serif;
+            --accent-color: #00d2ff;
+            --accent-secondary: #0088ff;
+            --bg-dark: #050505;
+            --bg-card: rgba(255,255,255,0.03);
+            --text-main: #ffffff;
+            --text-muted: #888888;
+            --text-soft: #cccccc;
+            --border-color: #222222;
+            --card-bg: #222222;
+            --form-bg: rgba(0,0,0,0.75);
+            --nav-bg: rgba(0,0,0,0.85);
+            --btn-text: #000000;
+            --hero-overlay: rgba(0,0,0,0.75);
+        }
+        [data-theme="light"] {
+            --accent-color: #0066cc;
+            --accent-secondary: #004499;
+            --bg-dark: #f0f2f5;
+            --bg-card: rgba(255,255,255,0.9);
+            --text-main: #111111;
+            --text-muted: #555555;
+            --text-soft: #333333;
+            --border-color: #dddddd;
+            --card-bg: #e8e8e8;
+            --form-bg: rgba(255,255,255,0.95);
+            --nav-bg: rgba(255,255,255,0.95);
+            --btn-text: #ffffff;
+            --hero-overlay: rgba(255,255,255,0.55);
+        }
+        [data-theme="paint"] {
+            --accent-color: #ff6b35;
+            --accent-secondary: #e85d04;
+            --bg-dark: #120a08;
+            --bg-card: rgba(255,107,53,0.06);
+            --text-main: #fff8f5;
+            --text-muted: #aa8877;
+            --text-soft: #ddbbaa;
+            --border-color: #3a2218;
+            --card-bg: #2a1810;
+            --form-bg: rgba(18,10,8,0.9);
+            --nav-bg: rgba(18,10,8,0.92);
+            --btn-text: #000000;
+            --hero-overlay: rgba(18,10,8,0.8);
+        }
+
+        body { font-family: var(--main-font); background: var(--bg-dark); color: var(--text-main); margin: 0; transition: background 0.4s, color 0.4s; }
+
+        /* ШАПКА С ФОНОМ */
+        .hero-section {
+            padding: 100px 20px 60px;
+            text-align: center;
+            background: linear-gradient(var(--hero-overlay), var(--hero-overlay)), url('img/hero-bg.jpg'), url('https://images.unsplash.com/photo-1619642751034-765df6977ed1?w=1400&q=80');
+            background-size: cover;
+            background-position: center;
+            border-bottom: 2px solid var(--accent-color);
+        }
+
+        .main-title {
+            font-family: var(--accent-font);
+            font-size: 3rem;
+            margin: 15px 0;
+            background: linear-gradient(to right, #fff, var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 15px rgba(0, 210, 255, 0.4));
+        }
+
+        /* КНОПКА ЗАПИСИ ПРЕМИУМ */
+        .btn-book-main {
+            font-family: var(--accent-font);
+            padding: 18px 45px;
+            font-size: 15px;
+            background: linear-gradient(45deg, var(--accent-secondary), var(--accent-color));
+            border: none;
+            color: white;
+            border-radius: 50px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.4s ease;
+            box-shadow: 0 4px 15px rgba(0, 210, 255, 0.3);
+            margin-top: 20px;
+        }
+        .btn-book-main:hover {
+            transform: scale(1.05) translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 210, 255, 0.5);
+        }
+
+        /* БЛОК ПОЧЕМУ МЫ */
+        .why-grid-new {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .why-card {
+            background: var(--bg-card);
+            padding: 25px;
+            border-radius: 15px;
+            border-left: 3px solid var(--accent-color);
+            transition: 0.3s;
+            text-align: left;
+        }
+        .why-card:hover { background: var(--bg-card); filter: brightness(1.15); transform: translateY(-5px); }
+        .why-card i { color: var(--accent-color); font-size: 24px; margin-bottom: 15px; display: block; }
+        .why-card h3 { font-family: var(--accent-font); font-size: 13px; color: var(--accent-color); margin: 0 0 8px 0; }
+        .why-card p { font-size: 13px; color: var(--text-soft); margin: 0; line-height: 1.5; }
+
+        /* ХИМЧИСТКА САЛОНА — ПРОМО */
+        .promo-card {
+            position: relative;
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 30px 25px 25px;
+            border-radius: 20px;
+            background: linear-gradient(160deg, rgba(255,107,53,0.14), rgba(0,0,0,0.4) 70%);
+            border: 1px solid rgba(255,140,60,0.4);
+            overflow: hidden;
+            text-align: center;
+            box-shadow: 0 8px 30px rgba(255,107,53,0.15);
+        }
+        .promo-card::before {
+            content: '';
+            position: absolute;
+            top: -40%; left: -20%;
+            width: 160%; height: 160%;
+            background: radial-gradient(circle at 30% 20%, rgba(255,140,60,0.25), transparent 60%);
+            pointer-events: none;
+        }
+        .promo-badge {
+            position: absolute;
+            top: 16px; left: -34px;
+            transform: rotate(-45deg);
+            background: linear-gradient(45deg, #ff6b35, #ff9d5c);
+            color: #fff;
+            font-family: var(--accent-font);
+            font-size: 11px;
+            letter-spacing: 1px;
+            padding: 5px 40px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        .promo-icon { font-size: 34px; color: #ff9d5c; margin-bottom: 10px; }
+        .promo-title { font-family: var(--accent-font); font-size: 16px; color: #fff; letter-spacing: 1px; margin: 6px 0 10px; position: relative; }
+        .promo-desc { font-size: 13px; color: var(--text-soft); line-height: 1.5; margin-bottom: 18px; position: relative; }
+        .promo-prices { display: flex; align-items: baseline; justify-content: center; gap: 14px; margin-bottom: 6px; position: relative; }
+        .promo-old { font-size: 20px; color: #999; text-decoration: line-through; opacity: 0.7; }
+        .promo-new { font-family: var(--accent-font); font-size: 34px; color: #ff9d5c; text-shadow: 0 0 15px rgba(255,140,60,0.5); }
+        .promo-discount { display: inline-block; background: #ff6b35; color: #fff; font-size: 11px; font-weight: bold; padding: 3px 10px; border-radius: 20px; margin-bottom: 14px; position: relative; }
+        .promo-date { font-family: var(--accent-font); font-size: 11px; letter-spacing: 1.5px; color: #ff9d5c; border: 1px solid rgba(255,140,60,0.4); display: inline-block; padding: 6px 16px; border-radius: 20px; margin-bottom: 18px; position: relative; }
+        .promo-btn {
+            position: relative;
+            font-family: var(--accent-font);
+            padding: 14px 30px;
+            font-size: 13px;
+            background: linear-gradient(45deg, #e85d04, #ff6b35);
+            border: none;
+            color: #fff;
+            border-radius: 50px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            box-shadow: 0 4px 15px rgba(255,107,53,0.35);
+            transition: 0.3s;
+        }
+        .promo-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(255,107,53,0.5); }
+
+        /* ПОРТФОЛИО — видео без обрезки */
+        .portfolio-grid-premium {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px;
+            padding: 0 16px;
+            max-width: 420px;
+            margin: 0 auto;
+        }
+        .port-item {
+            position: relative;
+            border-radius: 15px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            transition: 0.4s ease;
+            background: #000;
+        }
+        .port-item.port-video {
+            height: auto;
+            aspect-ratio: 9 / 16;
+            max-height: min(75vh, 560px);
+        }
+        .port-item img,
+        .port-item video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+            background: #000;
+        }
+        .port-item:hover {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 20px rgba(0, 210, 255, 0.25);
+            transform: translateY(-4px);
+        }
+        .port-video-wide {
+            grid-column: 1 / -1;
+            max-width: 420px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        .port-play-hint {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 48px; height: 48px; border-radius: 50%;
+            background: var(--accent-color); color: var(--btn-text);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; pointer-events: none; opacity: 0.9;
+            transition: opacity 0.3s;
+        }
+        .port-item video:not([paused]) ~ .port-play-hint { opacity: 0; }
+        @media (max-width: 520px) {
+            .portfolio-grid-premium { max-width: 100%; padding: 0 12px; }
+            .port-item.port-video { max-height: 70vh; }
+        }
+        .port-overlay {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.75);
+            padding: 5px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--accent-color);
+            font-family: var(--accent-font);
+            font-size: 9px;
+            color: #fff;
+            pointer-events: none;
+            backdrop-filter: blur(4px);
+        }
+
+        /* НАВИГАЦИЯ */
+        .nav-panel {
+            background: linear-gradient(145deg, #0a0a0a, #111) !important;
+            border: 1px solid #222 !important;
+            padding: 30px 20px !important;
+            border-radius: 20px;
+        }
+        .maps-grid-solid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .map-card {
+            text-decoration: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.4s ease;
+        }
+        .map-icon-circle {
+            width: 60px;
+            height: 60px;
+            background: #151515;
+            border: 1px solid #333;
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #fff;
+        }
+        .map-card span { font-size: 10px; color: #888; font-weight: bold; letter-spacing: 1px; }
+        
+        .map-card.waze:hover .map-icon-circle { background: #33CCFF; color: #000; }
+        .map-card.google:hover .map-icon-circle { background: #4285F4; color: #fff; }
+        .map-card.apple:hover .map-icon-circle { background: #fff; color: #000; }
+
+        /* AI WIDGET */
+        .ai-chat-widget { position: fixed; bottom: 20px; right: 20px; z-index: 10000; }
+        .ai-btn { width: 60px; height: 60px; background: var(--accent-color); border-radius: 50%; border: none; cursor: pointer; font-size: 24px; box-shadow: 0 0 15px var(--accent-color); }
+        .ai-window { 
+            position: absolute; bottom: 75px; right: 0; width: 300px; height: 400px; 
+            background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 20px; 
+            display: none; flex-direction: column; overflow: hidden;
+        }
+        .ai-header { background: var(--bg-card); padding: 15px; font-family: var(--accent-font); font-size: 12px; text-align: center; border-bottom: 1px solid var(--border-color); color: var(--text-main); }
+        .ai-body { flex: 1; padding: 15px; overflow-y: auto; font-size: 13px; color: var(--text-main); }
+        .ai-input-box { display: flex; padding: 10px; background: var(--bg-dark); }
+        .ai-input-box input { flex: 1; background: var(--card-bg); border: 1px solid var(--border-color); padding: 10px; color: var(--text-main); border-radius: 10px; }
+        .ai-window.active { display: flex; }
+
+        /* MODAL */
+        #modal-booking { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; align-items: center; justify-content: center; background: rgba(0,0,0,0.95); }
+        .modal-bg-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url('img/form-banner.jpg'), url('https://images.unsplash.com/photo-1619642751034-765df6977ed1?w=1200&q=80');
+            background-size: cover; background-position: center;
+            filter: brightness(0.25); z-index: 0;
+        }
+        .modal-box {
+            position: relative; z-index: 1;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 25px 60px rgba(0, 210, 255, 0.15);
+        }
+        .form-field {
+            width: 100%; padding: 14px; background: var(--form-bg);
+            border: 1px solid var(--border-color); color: var(--text-main); margin-bottom: 12px;
+            border-radius: 12px; outline: none; font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        .lang-selector button, .theme-btn {
+            background: var(--card-bg); border: 1px solid var(--border-color);
+            color: var(--text-main); padding: 5px 8px; border-radius: 6px;
+            cursor: pointer; margin-left: 3px; font-size: 11px; transition: 0.2s;
+        }
+        .lang-selector button.active, .theme-btn.active {
+            border-color: var(--accent-color); color: var(--accent-color);
+        }
+        .nav-controls { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+        .top-nav { background: var(--nav-bg) !important; border-bottom: 1px solid var(--border-color) !important; }
+
+        /* Панели языка и темы */
+        .control-dropdown { position: relative; }
+        .control-trigger {
+            display: flex; align-items: center; gap: 6px;
+            background: var(--bg-card); border: 1px solid var(--border-color);
+            color: var(--text-main); padding: 8px 12px; border-radius: 12px;
+            cursor: pointer; font-size: 14px; transition: 0.25s;
+            min-width: 52px; justify-content: center;
+        }
+        .control-trigger:hover, .control-dropdown.open .control-trigger {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 12px rgba(0,210,255,0.15);
+        }
+        .trigger-flag { font-size: 20px; line-height: 1; }
+        .control-trigger .fa-chevron-down { font-size: 10px; color: var(--text-muted); transition: transform 0.25s; }
+        .control-dropdown.open .control-trigger .fa-chevron-down { transform: rotate(180deg); }
+        .dropdown-panel {
+            position: absolute; top: calc(100% + 8px); right: 0;
+            min-width: 180px; background: var(--nav-bg);
+            border: 1px solid var(--border-color); border-radius: 14px;
+            padding: 8px; box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+            opacity: 0; visibility: hidden; transform: translateY(-8px);
+            transition: 0.25s ease; z-index: 10001;
+            backdrop-filter: blur(16px);
+        }
+        .control-dropdown.open .dropdown-panel {
+            opacity: 1; visibility: visible; transform: translateY(0);
+        }
+        .dropdown-panel button {
+            display: flex; align-items: center; gap: 12px; width: 100%;
+            padding: 10px 12px; border: none; background: transparent;
+            color: var(--text-main); border-radius: 10px; cursor: pointer;
+            font-size: 13px; text-align: left; transition: 0.2s;
+        }
+        .dropdown-panel button:hover { background: var(--bg-card); }
+        .dropdown-panel button.active {
+            background: var(--bg-card); border: 1px solid var(--accent-color);
+            color: var(--accent-color);
+        }
+        .dropdown-panel .item-flag { font-size: 22px; width: 28px; text-align: center; }
+        .dropdown-panel .item-icon {
+            width: 28px; height: 28px; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px;
+        }
+        .dropdown-panel .item-icon.theme-dark { background: #111; color: #00d2ff; }
+        .dropdown-panel .item-icon.theme-light { background: #f0f2f5; color: #0066cc; }
+        .dropdown-panel .item-icon.theme-paint { background: #2a1810; color: #ff6b35; }
+        .panel-label {
+            font-size: 9px; text-transform: uppercase; letter-spacing: 1px;
+            color: var(--text-muted); padding: 4px 12px 6px; font-family: var(--accent-font);
+        }
+        .form-field:focus { border-color: var(--accent-color); box-shadow: 0 0 8px rgba(0,210,255,0.2); }
+        .form-field:disabled { opacity: 0.5; cursor: not-allowed; }
+        .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+        .portfolio-soon {
+            grid-column: 1 / -1; padding: 40px 20px; text-align: center;
+            border: 1px dashed #333; border-radius: 15px; color: #666;
+        }
+        .portfolio-soon i { font-size: 32px; color: var(--accent-color); margin-bottom: 12px; display: block; }
+        .success-toast {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, 150%);
+            width: 85%; background: #000; border: 2px solid var(--accent-color);
+            border-radius: 20px; padding: 25px; z-index: 100; opacity: 0; visibility: hidden;
+            transition: 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-align: center;
+        }
+        .success-toast.active { opacity: 1; visibility: visible; transform: translate(-50%, -50%); }
+        #bookingForm.blur-effect { filter: blur(6px); opacity: 0.15; pointer-events: none; }
+        
+        /* ПРЕВЬЮ КАРТИНКИ */
+        #imagePreviewContainer {
+            display: none;
+            width: 100%;
+            margin-bottom: 12px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--accent-color);
+        }
+        #imagePreview { width: 100%; height: auto; display: block; }
+    </style>
+</head>
+<body>
+
+    <nav class="top-nav">
+        <div class="nav-content">
+            <div class="brand-logo" style="font-family: var(--accent-font); color: var(--accent-color);">INPUT CARS</div>
+            <div class="nav-controls">
+                <div class="control-dropdown" id="langDropdown">
+                    <button type="button" class="control-trigger" id="langTrigger" onclick="toggleLangPanel(event)" aria-label="Language">
+                        <span class="trigger-flag" id="currentFlag">🇱🇻</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="dropdown-panel" id="langPanel">
+                        <div class="panel-label" data-i18n="langPanelTitle">Valoda</div>
+                        <button type="button" data-lang="lv" onclick="selectLang('lv')"><span class="item-flag">🇱🇻</span> Latviešu</button>
+                        <button type="button" data-lang="ru" onclick="selectLang('ru')"><span class="item-flag">🇷🇺</span> Русский</button>
+                        <button type="button" data-lang="et" onclick="selectLang('et')"><span class="item-flag">🇪🇪</span> Eesti</button>
+                        <button type="button" data-lang="en" onclick="selectLang('en')"><span class="item-flag">🇬🇧</span> English</button>
+                    </div>
+                </div>
+                <div class="control-dropdown" id="themeDropdown">
+                    <button type="button" class="control-trigger" id="themeTrigger" onclick="toggleThemePanel(event)" aria-label="Theme">
+                        <i class="fas fa-palette" id="themeTriggerIcon"></i>
+                    </button>
+                    <div class="dropdown-panel" id="themePanel">
+                        <div class="panel-label" data-i18n="themePanelTitle">Tēma</div>
+                        <button type="button" class="theme-option" data-theme="dark" onclick="selectTheme('dark')">
+                            <span class="item-icon theme-dark"><i class="fas fa-moon"></i></span>
+                            <span data-i18n="themeDark">Tumšā</span>
+                        </button>
+                        <button type="button" class="theme-option" data-theme="light" onclick="selectTheme('light')">
+                            <span class="item-icon theme-light"><i class="fas fa-sun"></i></span>
+                            <span data-i18n="themeLight">Gaišā</span>
+                        </button>
+                        <button type="button" class="theme-option" data-theme="paint" onclick="selectTheme('paint')">
+                            <span class="item-icon theme-paint"><i class="fas fa-spray-can"></i></span>
+                            <span data-i18n="themePaint">Krāsas</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+   <main id="main-content">
+        <header class="hero-section">
+            <div class="hero-logo-wrap" style="width:100px;height:100px;margin:0 auto 10px;border:2px solid var(--accent-color);border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--bg-card);">
+                <i class="fas fa-spray-can" style="font-size:42px;color:var(--accent-color);"></i>
+            </div>
+            <h1 class="main-title">INPUT CARS</h1>
+            <p style="color: var(--text-muted); font-size: 12px; letter-spacing: 2px;" data-i18n="heroTagline">PROFESIONĀLA AUTO KRĀSOŠANA</p>
+            <button class="btn-book-main" onclick="openBooking()" data-i18n="heroBtn">PIETEIKTIES</button>
+        </header>
+
+        <section class="info-block">
+            <div class="glass-box" style="background:var(--bg-card); border: 1px solid var(--border-color); padding: 20px; border-radius: 15px; text-align: center; margin: 20px auto; max-width: 90%;">
+                <h3 style="font-family: var(--accent-font); font-size: 14px; color: var(--accent-color);" data-i18n="hoursTitle">🕒 DARBA LAIKS</h3>
+                <p data-i18n="hoursWeek">P-Pk: <b>09:00 - 17:00</b></p>
+                <p><span data-i18n="hoursWeekend" style="color: #ff4444;">S-Sv: Slēgts</span></p>
+            </div>
+        </section>
+
+        <section class="info-block">
+            <h2 class="sec-title" style="text-align: center; color: var(--accent-color); font-family: var(--accent-font);" data-i18n="whyTitle">KĀPĒC IZVĒLĒTIES MŪS</h2>
+            <div class="why-grid-new" style="padding: 0 20px;">
+                <div class="why-card">
+                    <i class="fas fa-spray-can"></i>
+                    <h3 data-i18n="why1Title">PERFEKTA KRĀSOJUMA KVALITĀTE</h3>
+                    <p data-i18n="why1Text">Krāsojam ar profesionāliem materiāliem. Katrs auto saņem individuālu pieeju.</p>
+                </div>
+                <div class="why-card">
+                    <i class="fas fa-user-tie"></i>
+                    <h3 data-i18n="why2Title">MALĒJU PIEREDZE</h3>
+                    <p data-i18n="why2Text">Mūsu meistari specializējas virsbūves krāsošanā un remontā.</p>
+                </div>
+                <div class="why-card">
+                    <i class="fas fa-shield-halved"></i>
+                    <h3 data-i18n="why3Title">GARANTIJA UZ DARBU</h3>
+                    <p data-i18n="why3Text">Mēs garantējam krāsojuma kvalitāti un ilgmūžību.</p>
+                </div>
+                <div class="why-card">
+                    <i class="fas fa-warehouse"></i>
+                    <h3 data-i18n="why4Title">KRĀSOŠANAS KAMERA</h3>
+                    <p data-i18n="why4Text">Mūsdienīga aprīkojuma krāsošanas kamera un precīza krāsu atlase.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="info-block">
+            <h2 class="sec-title" style="text-align: center; color: var(--accent-color); font-family: var(--accent-font);" data-i18n="cleaningTitle">SALONA TĪRĪŠANA UN ĶĪMISKĀ TĪRĪŠANA</h2>
+            <p style="max-width: 480px; margin: 0 auto 25px; font-size: 13px; color: var(--text-soft); padding: 0 20px;" data-i18n="cleaningText">Rūpīga salona tīrīšana un dziļā ķīmiskā tīrīšana — atgriezīsim Jūsu auto salonam svaigumu un tīrību.</p>
+            <div class="promo-card">
+                <span class="promo-badge" data-i18n="promoBadge">AKCIJA</span>
+                <i class="fas fa-spray-can-sparkles promo-icon"></i>
+                <h3 class="promo-title" data-i18n="promoTitle">PILNA SALONA ĶĪMISKĀ TĪRĪŠANA</h3>
+                <p class="promo-desc" data-i18n="promoDesc">Viena diena, lieliska cena! Pilna auto salona ķīmiskā tīrīšana ar -50% atlaidi.</p>
+                <div class="promo-prices">
+                    <span class="promo-old" data-i18n="promoOldPrice">60 €</span>
+                    <span class="promo-new" data-i18n="promoNewPrice">30 €</span>
+                </div>
+                <div><span class="promo-discount" data-i18n="promoDiscount">-50%</span></div>
+                <div><span class="promo-date"><i class="fas fa-calendar-day"></i> <span data-i18n="promoDate">TIKAI 12.07.2026</span></span></div>
+                <div>
+                    <button type="button" class="promo-btn" onclick="openBookingPromo()" data-i18n="promoBtn">PIETEIKTIES AKCIJAI</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="info-block">
+            <h2 class="sec-title" style="text-align: center; color: var(--accent-color); font-family: var(--accent-font); margin: 40px 0 20px;" data-i18n="portfolioTitle">MŪSU DARBI</h2>
+            <div class="portfolio-grid-premium" id="portfolioGrid">
+                <div class="port-item port-video">
+                    <video src="video/1.mp4" controls playsinline preload="metadata"></video>
+                    <span class="port-play-hint"><i class="fas fa-play"></i></span>
+                    <div class="port-overlay" data-i18n="portLabel1">PILNA KRĀSOŠANA</div>
+                </div>
+                <div class="port-item port-video port-video-wide">
+                    <video src="video/3.mp4" controls playsinline preload="metadata"></video>
+                    <span class="port-play-hint"><i class="fas fa-play"></i></span>
+                    <div class="port-overlay" data-i18n="portLabel3">PIEMĒRS — PIRMS/PĒC</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="info-block" style="padding: 40px 20px;">
+            <h2 class="sec-title" style="text-align: center; color: var(--accent-color); font-family: var(--accent-font); margin-bottom: 20px;" data-i18n="findTitle">ATRAST MŪS</h2>
+            <div class="nav-panel">
+                <div class="maps-grid-solid">
+                    <a href="https://www.waze.com/ul?q=Ventspils" class="map-card waze">
+                        <div class="map-icon-circle"><i class="fab fa-waze"></i></div>
+                        <span>WAZE</span>
+                    </a>
+                    <a href="https://www.google.com/maps/search/?api=1&query=Ventspils" class="map-card google">
+                        <div class="map-icon-circle"><i class="fas fa-location-dot"></i></div>
+                        <span>GOOGLE</span>
+                    </a>
+                    <a href="https://maps.apple.com/?q=Ventspils" class="map-card apple">
+                        <div class="map-icon-circle"><i class="fab fa-apple"></i></div>
+                        <span>APPLE</span>
+                    </a>
+                </div>
+                <div class="address-footer" style="text-align: center; color: var(--text-muted);">
+                    <i class="fas fa-map-marker-alt"></i> <span data-i18n="address"> </span>
+                </div>
+            </div>
+        </section>
+
+        <footer style="padding: 50px 20px; text-align: center; border-top: 1px solid var(--border-color);">
+            <div style="display: flex; justify-content: center; gap: 25px; margin-bottom: 20px;">
+                <a href="#" style="color: var(--text-main); font-size: 24px;"><i class="fab fa-instagram"></i></a>
+                <a href="#" style="color: var(--text-main); font-size: 24px;"><i class="fab fa-tiktok"></i></a>
+                <a href="#" style="color: var(--text-main); font-size: 24px;"><i class="fab fa-telegram"></i></a>
+                <a href="#" style="color: var(--text-main); font-size: 24px;"><i class="fab fa-facebook"></i></a>
+                <a href="https://wa.me/37120000000" style="color: var(--text-main); font-size: 24px;"><i class="fab fa-whatsapp"></i></a>
+            </div>
+            <p style="color: var(--text-muted); font-size: 11px; letter-spacing: 1px;" data-i18n="footerCopy">© INPUT CARS | AUTO KRĀSOŠANA</p>
+        </footer>
+    </main>
+
+    <div class="ai-chat-widget">
+        <button class="ai-btn" onclick="toggleAI()"><i class="fas fa-robot" style="color:#000;"></i></button>
+        <div class="ai-window" id="aiWindow">
+            <div class="ai-header" data-i18n="aiHeader">INPUT CARS ASISTENTS</div>
+            <div class="ai-body" id="aiBody">
+                <p style="background:var(--card-bg); padding:10px; border-radius:10px;" data-i18n="aiWelcome">Sveiki! Jautājiet par krāsošanas pakalpojumiem.</p>
+            </div>
+            <div class="ai-input-box">
+                <input type="text" id="aiInput" data-i18n-ph="aiPlaceholder" placeholder="Rakstiet šeit...">
+                <button onclick="aiSend()" style="background:none; border:none; color:var(--accent-color); margin-left:10px;"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-booking" class="full-screen-modal" style="display:none;">
+        <div class="modal-bg-overlay" onclick="closeBooking()"></div>
+        <div class="modal-box glass-form" style="width: 90%; max-width: 480px; background: rgba(10,10,10,0.92); padding: 30px; border-radius: 20px; border: 1px solid rgba(0,210,255,0.2); overflow-y: auto; max-height: 90vh;">
+            <button onclick="closeBooking()" style="position:absolute; top:15px; left:15px; background:none; border:none; color:#fff; cursor:pointer; font-size: 14px; z-index:2;" data-i18n="backBtn">← Atpakaļ</button>
+            <button onclick="closeBooking()" aria-label="Close" style="position:absolute; top:12px; right:15px; background:rgba(255,255,255,0.08); border:none; color:#fff; cursor:pointer; font-size: 16px; z-index:2; width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center;"><i class="fas fa-xmark"></i></button>
+            
+            <form id="bookingForm" style="margin-top: 30px;">
+                <h2 style="font-family: var(--accent-font); font-size: 16px; margin-bottom: 20px; color: var(--accent-color); text-align: center;" data-i18n="formTitle">PIETEIKTIES VIZĪTEI</h2>
+                
+                <input type="text" id="nameInput" class="form-field" data-i18n-ph="namePh" placeholder="Vārds un Uzvārds *" required>
+                
+                <div class="form-row-2">
+                    <input type="tel" id="phoneInput" class="form-field" data-i18n-ph="phonePh" value="+371" required style="margin-bottom:0;">
+                    <input type="email" id="emailInput" class="form-field" data-i18n-ph="emailPh" placeholder="E-pasts *" required style="margin-bottom:0;">
+                </div>
+
+                <select id="serviceInput" class="form-field" required></select>
+
+                <div class="form-row-2">
+                    <select id="brandInput" class="form-field" required style="margin-bottom:0;">
+                        <option value="" disabled selected data-i18n-ph="brandPh">Auto marka *</option>
+                    </select>
+                    <select id="modelInput" class="form-field" disabled required style="margin-bottom:0;">
+                        <option value="" disabled selected data-i18n-ph="modelPh">Auto modelis *</option>
+                    </select>
+                </div>
+
+                <textarea id="descInput" class="form-field" data-i18n-ph="descPh" placeholder="Problēmas apraksts — ko vēlaties veikt? *" required style="height: 90px; resize: none;"></textarea>
+
+                <div id="imagePreviewContainer">
+                    <img id="imagePreview" src="" alt="Preview">
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label for="fileInput" id="fileLabel" style="display:block; padding:12px; border:1px dashed #444; border-radius:12px; cursor:pointer; font-size:12px; color:#ccc; text-align:center; background:rgba(0,0,0,0.4);">
+                        <i class="fas fa-camera"></i> <span data-i18n="photoLabel">Pievienot foto (problēmas zona)</span>
+                    </label>
+                    <input type="file" id="fileInput" accept="image/*" style="display:none;">
+                </div>
+
+                <div class="g-recaptcha" data-sitekey="6LdTxD8sAAAAAD1yxCkgdOlLb0dRvvq3xspdW_8W" data-theme="dark" style="margin-bottom:15px; transform:scale(0.85); transform-origin:0 0;"></div>
+                
+                <div style="display: flex; align-items: center; gap: 12px; margin: 20px 0; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px solid #222;">
+                    <input type="checkbox" required id="gdpr" style="cursor: pointer;">
+                    <label for="gdpr" style="font-size: 10px; color: #888; line-height: 1.2; cursor: pointer;" data-i18n="gdpr">
+                        Es piekrītu personas datu apstrādei saskaņā ar GDPR.
+                    </label>
+                </div>
+
+                <button type="submit" id="submitBtn" class="form-field" style="background:var(--accent-color); border:none; font-weight:bold; color:var(--btn-text); cursor:pointer; text-transform: uppercase; margin-bottom:0;" data-i18n="submitBtn">Nosūtīt pieteikumu</button>
+            </form>
+
+            <div id="successPart" class="success-toast">
+                <div style="width:64px; height:64px; margin:0 auto 15px; border-radius:50%; background:rgba(0,210,255,0.12); border:2px solid var(--accent-color); display:flex; align-items:center; justify-content:center;">
+                    <i class="fas fa-check" style="font-size:26px; color:var(--accent-color);"></i>
+                </div>
+                <h3 style="color: var(--accent-color); margin-bottom: 10px;" data-i18n="successTitle">NOSŪTĪTS!</h3>
+                <p style="font-size: 14px;" data-i18n="successText">Mēs sazināsimies ar Jums drīz.</p>
+                <button type="button" onclick="closeBooking()" style="margin-top:20px; background:var(--accent-color); border:none; color:var(--btn-text); font-weight:bold; padding:12px 30px; border-radius:50px; cursor:pointer; text-transform:uppercase; font-size:12px; letter-spacing:1px;" data-i18n="successCloseBtn">Aizvērt</button>
+                <div style="width:100%; height:3px; background:#111; margin-top:20px; border-radius:3px; overflow:hidden;">
+                    <div id="progressBar" style="width:0%; height:100%; background:var(--accent-color);"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.google.com/recaptcha/api.js?hl=lv" async defer></script>
+    <script src="js/script.js"></script>
+</body>
+</html>
